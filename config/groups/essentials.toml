@@ -1,25 +1,39 @@
-# Package group: "essentials" — the packages where recompiling with per-arch
-# -march tuning actually pays off for the Atom / C-60 targets: graphics, video &
-# audio codecs, image + compression + crypto libraries. Arch-agnostic list of
-# names; each arch that enables this group (config/arches/<arch>.toml `groups`)
-# builds whatever members exist for it (missing ones just fail-and-skip).
+# Package group: "essentials" — the shared, universal core: high-leverage libraries
+# BOTH targets run constantly and clearly benefit from -march/-mtune tuning.
 #
-# Prune or extend from the UI (Groups panel) or `bin/group.sh add/remove`.
+# Selection criteria (all must hold):
+#   1. CPU-bound hot loops     — real time in numeric/SIMD-amenable code.
+#   2. High leverage           — a *shared library* many things link (one rebuild
+#                                helps the whole system), not a leaf app.
+#   3. Realistic on BOTH boxes — something the Atom N270 and C-60 actually run.
+#
+# Kept lean on purpose. Divergence between arches is expressed by enabling DIFFERENT
+# groups per arch (config/arches/<arch>.toml `groups`), not by bloating this list:
+#   - encoders (x264/x265, …) live in the "encoders" group — opt-in, off by default
+#     (pointless on the Atom; enable on btver1 only if it actually encodes).
+#   - Atom-specific tuning will get its own group + a config-tuned kernel, built from
+#     an inspection of the real machine.
+#
+# Note: several members (ffmpeg, libvpx, openssl, …) already use runtime-dispatched
+# hand-written asm, so -march mostly helps their C/glue paths; the biggest wins come
+# from the autovectorized libs (freetype2, harfbuzz, pixman, cairo, image/text).
 
 name        = "essentials"
-description = "Packages worth recompiling with -march tuning (codecs, graphics, compression, crypto)"
+description = "Shared core: libraries both targets run and benefit from tuning"
 
 packages = [
-  # graphics / GL
-  "mesa", "libdrm", "pixman", "freetype2", "harfbuzz",
-  # video codecs
-  "ffmpeg", "x264", "x265", "libvpx", "dav1d", "libtheora",
-  # image
-  "libjpeg-turbo", "libpng", "libwebp",
+  # graphics / text rendering (hot on every GUI frame; weak GPUs fall back to CPU)
+  "mesa", "libdrm", "pixman", "cairo", "freetype2", "harfbuzz",
+  # image decode (web pages, thumbnails)
+  "libjpeg-turbo", "libpng", "libwebp", "giflib",
+  # video decode (realistic on these CPUs: H.264 via ffmpeg, VP8/9, Theora)
+  "ffmpeg", "libvpx", "libtheora",
   # audio
-  "lame", "flac", "opus", "libvorbis",
-  # compression
-  "zlib", "zstd", "xz", "lz4",
-  # crypto / math
-  "openssl", "libgcrypt",
+  "lame", "flac", "opus", "libvorbis", "speex",
+  # compression (linked by nearly everything — highest leverage)
+  "zlib", "zstd", "xz", "lz4", "bzip2",
+  # crypto (TLS on the critical path; SIMD-sensitive ciphers/hashes)
+  "openssl", "libgcrypt", "nettle",
+  # web/data stack (regex + embedded db, used everywhere)
+  "pcre2", "sqlite",
 ]
