@@ -1,0 +1,24 @@
+# Package group: "essentials-atom" — tuning targets specific to the Atom N270
+# machine (Acer Aspire One: GMA950 graphics, XFCE desktop, emulation/streaming).
+# Derived from an inspection of the actual box. Enabled only on the "atom" arch.
+#
+# Rationale per package:
+#   mesa-amber       the GMA950 (gen3) has no driver in modern mesa; mesa-amber is
+#                    the frozen fork that keeps its classic driver. Much of GL runs
+#                    on the CPU here (no hw T&L / limited shaders), so -march helps a
+#                    lot. AUR-only -> local override in pkgbuilds/atom/mesa-amber/.
+#   xf86-video-intel 2D (UXA) acceleration the XFCE desktop leans on; tuned rebuild.
+#   pango            GTK text layout — hot on every XFCE widget.
+#   gdk-pixbuf2      image/icon/thumbnail decoding across the desktop.
+#   sdl2             audio/video/input for retroarch + moonlight-embedded.
+
+name        = "essentials-atom"
+description = "Atom N270 machine-specific tuning (GMA950 GL, XFCE, emulation)"
+
+packages = [
+  "mesa-amber",
+  "xf86-video-intel",
+  "pango",
+  "gdk-pixbuf2",
+  "sdl2",
+]

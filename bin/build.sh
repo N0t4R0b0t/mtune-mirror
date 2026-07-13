@@ -39,13 +39,14 @@ resolve_src() {
   if [ -f "$localdir/PKGBUILD" ]; then
     cp -r "$localdir" "$dest"; printf '%s\n' "$dest"; return 0
   fi
-  if [ "$(toml_get "$conf" base)" = "x86_64" ]; then
-    ( cd "$work" && pkgctl repo clone --protocol https "$pkg" ) >/dev/null 2>&1 \
-      || { warn "pkgctl clone failed for '$pkg'"; return 1; }
-    [ -f "$dest/PKGBUILD" ] && { printf '%s\n' "$dest"; return 0; }
-    warn "no PKGBUILD after clone for '$pkg'"; return 1
-  fi
-  warn "no local PKGBUILD for i686 '$pkg' (upstream i686 fetch unimplemented)"; return 1
+  # Upstream: clone the packaging repo from Arch's GitLab. This works for BOTH
+  # x86_64 and i686 — archlinux32 rebuilds the same Arch PKGBUILDs, so an i686
+  # build just needs makepkg --ignorearch (added in build_pkg). Packages that are
+  # AUR-only or archlinux32-patched (e.g. mesa-amber) get a local override instead.
+  ( cd "$work" && pkgctl repo clone --protocol https "$pkg" ) >/dev/null 2>&1 \
+    || { warn "pkgctl clone failed for '$pkg' (AUR/patched? add a local PKGBUILD)"; return 1; }
+  [ -f "$dest/PKGBUILD" ] && { printf '%s\n' "$dest"; return 0; }
+  warn "no PKGBUILD after clone for '$pkg'"; return 1
 }
 
 # build_pkg <pkg> <chroot-copy-name> — build one package into the repo.
@@ -66,6 +67,8 @@ build_pkg() {
   # makepkg args (after --): skip source-PGP checks and/or the check()/test suite.
   # Tests run tuned binaries on the build host's CPU, which may lack the target ISA.
   local mpk=()
+  # i686 builds Arch's x86_64 PKGBUILDs in an i686 chroot -> skip the arch check.
+  is_i686 "$arch" && mpk+=(--ignorearch)
   [ "$(config_get skip_pgp_check)" != "false" ] && mpk+=(--skippgpcheck)
   [ "$(config_get skip_check)" != "false" ] && mpk+=(--nocheck)
   local mkargs=(); [ "${#mpk[@]}" -gt 0 ] && mkargs=(-- "${mpk[@]}")

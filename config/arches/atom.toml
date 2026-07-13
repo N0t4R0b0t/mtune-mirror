@@ -18,7 +18,7 @@ toolchain = "devtools32"
 cflags    = "-march=atom -mtune=atom -O2 -pipe"
 
 # Package groups this arch builds (see config/groups/<name>.toml).
-groups    = ["essentials"]
+groups    = ["essentials", "essentials-atom"]
 
 [chroot]
 # $arch and $repo are expanded by pacman when it reads the generated mirrorlist.

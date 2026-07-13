@@ -9,7 +9,7 @@ toolchain = "devtools"
 cflags    = "-march=btver1 -mtune=btver1 -O2 -pipe"
 
 # Package groups this arch builds (see config/groups/<name>.toml).
-groups    = ["essentials"]
+groups    = ["essentials", "essentials-btver1"]
 
 [chroot]
 # Standard Arch mirror; the container's own /etc/pacman.d/mirrorlist is reused if left blank.

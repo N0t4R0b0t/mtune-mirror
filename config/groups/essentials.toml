@@ -23,7 +23,9 @@ description = "Shared core: libraries both targets run and benefit from tuning"
 
 packages = [
   # graphics / text rendering (hot on every GUI frame; weak GPUs fall back to CPU)
-  "mesa", "libdrm", "pixman", "cairo", "freetype2", "harfbuzz",
+  # NOTE: the GL driver itself is machine-specific and lives in the per-arch groups
+  # (essentials-atom -> mesa-amber for the GMA950; essentials-btver1 -> mesa).
+  "libdrm", "pixman", "cairo", "freetype2", "harfbuzz",
   # image decode (web pages, thumbnails)
   "libjpeg-turbo", "libpng", "libwebp", "giflib",
   # video decode (realistic on these CPUs: H.264 via ffmpeg, VP8/9, Theora)
