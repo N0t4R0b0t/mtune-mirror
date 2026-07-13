@@ -1,0 +1,26 @@
+# Arch registry entry: "atom" — Intel Atom N270 (Acer Aspire One), i686.
+# This file is the extensibility seam: adding a new arch = dropping a new .toml here
+# (see bin/add-arch.sh) plus bootstrapping its chroot.
+
+name      = "atom"
+
+# base drives build personality and chroot bootstrap path.
+#   i686   -> builds wrapped in `linux32`/`setarch i686`, chroot from archlinux32 mirrors
+#   x86_64 -> native, standard Arch devtools
+base      = "i686"
+
+# toolchain records which devtools flavor bootstraps/builds this arch.
+#   devtools32 -> archlinux32 (i686)
+#   devtools   -> standard Arch (x86_64)
+toolchain = "devtools32"
+
+# Target CPU tuning injected as CFLAGS/CXXFLAGS when building this arch's packages.
+cflags    = "-march=atom -mtune=atom -O2 -pipe"
+
+# Package groups this arch builds (see config/groups/<name>.toml).
+groups    = ["essentials"]
+
+[chroot]
+# $arch and $repo are expanded by pacman when it reads the generated mirrorlist.
+mirror  = "https://mirror.archlinux32.org/$arch/$repo"
+keyring = "archlinux32-keyring"

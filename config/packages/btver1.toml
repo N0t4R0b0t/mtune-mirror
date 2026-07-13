@@ -1,0 +1,8 @@
+# Per-arch EXTRAS for "btver1" (x86_64): packages beyond its enabled groups
+# (config/arches/btver1.toml `groups`), plus source overrides. See
+# config/packages/atom.toml for field semantics. Group members live in
+# config/groups/*.toml.
+
+[[package]]
+name   = "pkgmirror-hello"
+source = "local"

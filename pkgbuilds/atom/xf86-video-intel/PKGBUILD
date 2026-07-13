@@ -1,0 +1,8 @@
+# Local override PKGBUILD for xf86-video-intel on the "atom" (i686) arch.
+#
+# When config/packages/atom.toml marks a package source = "local", the builder uses
+# THIS file instead of the upstream archlinux32 PKGBUILD, and an upstream sync will
+# never overwrite it (see bin/lib/common.sh:pkgbuild_source_dir).
+#
+# Fork the stock PKGBUILD here, patch deps / bump pkgrel as needed, and the local
+# copy wins. Placeholder for Increment 1 — real build logic lands in Increment 2.

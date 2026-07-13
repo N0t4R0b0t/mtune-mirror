@@ -1,0 +1,16 @@
+# Per-arch EXTRAS for "atom" (i686): packages built for this arch beyond its
+# enabled groups (see config/arches/atom.toml `groups`), plus source overrides.
+#
+#   source = "upstream" -> rebuild stock PKGBUILD tuned
+#          = "local"     -> use pkgbuilds/atom/<name>/PKGBUILD (also auto-detected
+#                           by file presence; local override always wins)
+#
+# Group members (e.g. mesa) live in config/groups/*.toml, not here.
+
+[[package]]
+name   = "xf86-video-intel"
+source = "local"
+
+[[package]]
+name   = "pkgmirror-hello"
+source = "local"

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>pkgmirror</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>📦 pkgmirror</h1>
+    <span id="status-line" class="muted">loading…</span>
+    <span id="paused-badge" class="badge err" style="display:none">PAUSED</span>
+    <span class="disk" id="disk"></span>
+    <button id="pause-btn" onclick="togglePause()">Pause</button>
+    <button id="stop-btn" class="danger" onclick="stopBuilds()">Stop builds</button>
+    <button onclick="openHelp()">Help</button>
+  </header>
+  <main>
+    <section id="groups"></section>
+    <div id="arches"></div>
+  </main>
+
+  <!-- live build console -->
+  <div class="console" id="console">
+    <div class="bar">
+      <strong id="console-title">build</strong>
+      <span id="console-state" class="badge muted">running</span>
+      <span class="grow"></span>
+      <button onclick="closeConsole()">close</button>
+    </div>
+    <pre id="console-out"></pre>
+  </div>
+
+  <!-- PKGBUILD editor -->
+  <div class="modal" id="editor">
+    <div class="box">
+      <div class="bar">
+        <strong id="editor-title">PKGBUILD</strong>
+        <span class="grow"></span>
+        <button class="primary" onclick="savePkgbuild()">Save</button>
+        <button onclick="closeEditor()">Cancel</button>
+      </div>
+      <textarea id="editor-text" spellcheck="false"></textarea>
+    </div>
+  </div>
+
+  <!-- help -->
+  <div class="modal" id="help">
+    <div class="box">
+      <div class="bar">
+        <strong>Help &amp; client setup</strong>
+        <span class="grow"></span>
+        <button onclick="closeHelp()">Close</button>
+      </div>
+      <div class="help-body" id="help-body"></div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

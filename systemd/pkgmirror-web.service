@@ -1,0 +1,20 @@
+# pkgmirror monitoring & operations web UI. Runs as the pkgmirror build user
+# (which has full NOPASSWD sudo) and binds localhost; nginx fronts it on :80.
+[Unit]
+Description=pkgmirror web UI
+After=network-online.target nginx.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pkgmirror
+Environment=PKGMIRROR_ROOT=/opt/pkgmirror
+Environment=PKGMIRROR_DATA=/srv/pkgmirror
+Environment=PKGMIRROR_WEB_ADDR=127.0.0.1:8080
+WorkingDirectory=/opt/pkgmirror
+ExecStart=/usr/local/bin/pkgmirror-web
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

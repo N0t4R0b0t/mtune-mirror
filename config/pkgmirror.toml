@@ -1,0 +1,19 @@
+# Global pkgmirror settings.
+
+# How many packages to build simultaneously within a single arch. Each parallel
+# build gets its own chroot copy; available cores are split across them
+# (make -j = cores / build_concurrency). Set to 1 for strictly sequential builds.
+build_concurrency = 3
+
+# Skip verification of upstream *source* PGP signatures during build. PKGBUILDs and
+# sources come from official Arch git over HTTPS (and the repo is TrustAll), and the
+# clean chroot has no upstream signing keys, so most builds would otherwise fail with
+# "unknown public key". Set false only if you import the needed keys into the chroots.
+skip_pgp_check = true
+
+# Skip each package's check()/test suite. Packages are compiled with the TARGET's
+# -march (e.g. btver1 = AMD Bobcat, which uses SSE4A) but tests RUN on the build host
+# (Intel Xeon, no SSE4A) — so tuned test binaries can hit illegal instructions and
+# fail spuriously on the wrong CPU. Skipping check() is required for reliable
+# cross-tuned builds. Set false only if the build host shares the target's ISA.
+skip_check = true

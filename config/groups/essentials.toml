@@ -1,0 +1,25 @@
+# Package group: "essentials" — the packages where recompiling with per-arch
+# -march tuning actually pays off for the Atom / C-60 targets: graphics, video &
+# audio codecs, image + compression + crypto libraries. Arch-agnostic list of
+# names; each arch that enables this group (config/arches/<arch>.toml `groups`)
+# builds whatever members exist for it (missing ones just fail-and-skip).
+#
+# Prune or extend from the UI (Groups panel) or `bin/group.sh add/remove`.
+
+name        = "essentials"
+description = "Packages worth recompiling with -march tuning (codecs, graphics, compression, crypto)"
+
+packages = [
+  # graphics / GL
+  "mesa", "libdrm", "pixman", "freetype2", "harfbuzz",
+  # video codecs
+  "ffmpeg", "x264", "x265", "libvpx", "dav1d", "libtheora",
+  # image
+  "libjpeg-turbo", "libpng", "libwebp",
+  # audio
+  "lame", "flac", "opus", "libvorbis",
+  # compression
+  "zlib", "zstd", "xz", "lz4",
+  # crypto / math
+  "openssl", "libgcrypt",
+]
