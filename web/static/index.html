@@ -8,20 +8,31 @@
 </head>
 <body>
   <header>
+    <button id="burger" class="burger" onclick="toggleDrawer()" aria-label="Toggle menu" aria-expanded="false">☰</button>
     <h1>📦 pkgmirror</h1>
-    <span id="status-line" class="muted">loading…</span>
+    <span class="grow"></span>
     <span id="paused-badge" class="badge err" style="display:none">PAUSED</span>
-    <span class="disk" id="disk"></span>
+    <span class="stats" id="stats"></span>
     <button id="pause-btn" onclick="togglePause()">Pause</button>
     <button id="stop-btn" class="danger" onclick="stopBuilds()">Stop builds</button>
-    <button onclick="openHelp()">Help</button>
   </header>
-  <main>
-    <section id="groups"></section>
-    <div id="arches"></div>
-  </main>
 
-  <!-- live build console -->
+  <!-- left slide-out menu -->
+  <aside class="drawer" id="drawer">
+    <div class="drawer-head">📦 pkgmirror</div>
+    <nav id="nav">
+      <a href="#/dashboard" data-view="dashboard">Dashboard</a>
+      <a href="#/packages" data-view="packages">Packages</a>
+      <a href="#/builds" data-view="builds">Builds</a>
+      <a href="#/settings" data-view="settings">Settings</a>
+      <a href="#/help" data-view="help">Help</a>
+    </nav>
+  </aside>
+  <div class="backdrop" id="backdrop" onclick="closeDrawer()"></div>
+
+  <main id="view"><!-- router renders here --></main>
+
+  <!-- live build console (docked, independent of the current view) -->
   <div class="console" id="console">
     <div class="bar">
       <strong id="console-title">build</strong>
@@ -45,17 +56,20 @@
     </div>
   </div>
 
-  <!-- help -->
-  <div class="modal" id="help">
-    <div class="box">
+  <!-- per-package details (build history + logs) -->
+  <div class="modal" id="pkgmodal">
+    <div class="box wide">
       <div class="bar">
-        <strong>Help &amp; client setup</strong>
+        <strong id="pkgmodal-title">package</strong>
         <span class="grow"></span>
-        <button onclick="closeHelp()">Close</button>
+        <button onclick="closePkgModal()">Close</button>
       </div>
-      <div class="help-body" id="help-body"></div>
+      <div class="pkgmodal-body" id="pkgmodal-body"></div>
     </div>
   </div>
+
+  <!-- toast notifications -->
+  <div id="toasts"></div>
 
   <script src="/app.js"></script>
 </body>

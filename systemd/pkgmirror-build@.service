@@ -11,6 +11,9 @@ Wants=network-online.target
 Type=oneshot
 User=pkgmirror
 Environment=PKGMIRROR_DATA=/srv/pkgmirror
+# So build.sh can advertise its own unit in state/<arch>/current.json, letting
+# the dashboard reattach the live log console to a timer-launched sweep.
+Environment=PKGMIRROR_UNIT=pkgmirror-build@%i.service
 WorkingDirectory=/opt/pkgmirror
 # update-check.sh flags what needs rebuilding; build.sh does the sweep.
 ExecStart=/opt/pkgmirror/bin/update-check.sh %i

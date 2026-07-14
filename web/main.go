@@ -7,6 +7,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"embed"
 	"encoding/json"
@@ -19,7 +20,9 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -52,7 +55,10 @@ func main() {
 	mux.HandleFunc("GET /api/status", hStatus)
 	mux.HandleFunc("POST /api/build", hBuild)
 	mux.HandleFunc("GET /api/logs/stream", hLogStream)
+	mux.HandleFunc("GET /api/logs/build/{arch}/{pkg}/{ts}", hBuildLog)
+	mux.HandleFunc("GET /api/builds", hAllBuilds)
 	mux.HandleFunc("GET /api/builds/{arch}", hBuilds)
+	mux.HandleFunc("GET /api/history/{arch}/{pkg}", hPkgHistory)
 	mux.HandleFunc("POST /api/packages/{arch}", hAddPackage)
 	mux.HandleFunc("DELETE /api/packages/{arch}/{pkg}", hRemovePackage)
 	mux.HandleFunc("GET /api/pkgbuild/{arch}/{pkg}", hGetPkgbuild)
@@ -162,6 +168,10 @@ type pkgInfo struct {
 	SrcVer  string `json:"source_version"`
 	Local   bool   `json:"local"`
 	Due     bool   `json:"due"`
+	// Build outcome history (from state/<arch>/history.jsonl), 0/"" if never built.
+	LastBuild  int64  `json:"last_build,omitempty"`  // end time of the most recent attempt
+	LastResult string `json:"last_result,omitempty"` // "ok" | "failed" for that attempt
+	LastOk     int64  `json:"last_ok,omitempty"`     // end time of the most recent success
 }
 type archInfo struct {
 	Name          string          `json:"name"`
@@ -171,7 +181,61 @@ type archInfo struct {
 	TimerNext     string          `json:"timer_next"`
 	EnabledGroups []string        `json:"enabled_groups"`
 	LastBuild     json.RawMessage `json:"last_build,omitempty"`
+	Current       *curBuild       `json:"current,omitempty"`
 	Packages      []pkgInfo       `json:"packages"`
+}
+
+// curBuild is the live view of an in-flight build sweep for one arch, assembled
+// from state/<arch>/current.json (written by build.sh at start) plus the
+// per-package progress markers in state/<arch>/progress/. Nil when idle.
+type curBuild struct {
+	Unit     string   `json:"unit"`
+	Filter   string   `json:"filter"`
+	Started  int64    `json:"started"`
+	Jobs     int      `json:"jobs"`
+	Total    int      `json:"total"`
+	Packages []curPkg `json:"packages"`
+}
+type curPkg struct {
+	Name   string `json:"name"`
+	Status string `json:"status"` // pending | building | ok | failed
+	At     int64  `json:"at,omitempty"`
+}
+
+// currentBuild reads the live build descriptor for arch a, merging each selected
+// package with its progress marker. Returns nil when no build is in flight.
+func currentBuild(a string) *curBuild {
+	sdir := filepath.Join(data, "state", a)
+	b, err := os.ReadFile(filepath.Join(sdir, "current.json"))
+	if err != nil {
+		return nil
+	}
+	var raw struct {
+		Unit     string   `json:"unit"`
+		Filter   string   `json:"filter"`
+		Started  int64    `json:"started"`
+		Jobs     int      `json:"jobs"`
+		Total    int      `json:"total"`
+		Packages []string `json:"packages"`
+	}
+	if json.Unmarshal(b, &raw) != nil {
+		return nil
+	}
+	cb := &curBuild{Unit: raw.Unit, Filter: raw.Filter, Started: raw.Started, Jobs: raw.Jobs, Total: raw.Total}
+	for _, name := range raw.Packages {
+		p := curPkg{Name: name, Status: "pending"}
+		if pb, err := os.ReadFile(filepath.Join(sdir, "progress", name)); err == nil {
+			f := strings.SplitN(strings.TrimSpace(string(pb)), "\t", 2)
+			if f[0] != "" {
+				p.Status = f[0]
+			}
+			if len(f) == 2 {
+				p.At, _ = strconv.ParseInt(f[1], 10, 64)
+			}
+		}
+		cb.Packages = append(cb.Packages, p)
+	}
+	return cb
 }
 type groupInfo struct {
 	Name        string   `json:"name"`
@@ -186,6 +250,7 @@ func packagesFor(arch string) []pkgInfo {
 	if err != nil {
 		return nil
 	}
+	stats := buildStats(arch)
 	var pkgs []pkgInfo
 	for _, line := range strings.Split(out, "\n") {
 		f := strings.SplitN(line, "\t", 3)
@@ -201,9 +266,66 @@ func packagesFor(arch string) []pkgInfo {
 		} else {
 			p.Due = p.RepoVer == ""
 		}
+		if s, ok := stats[p.Name]; ok {
+			p.LastBuild, p.LastResult, p.LastOk = s.LastEnd, s.LastResult, s.LastOk
+		}
 		pkgs = append(pkgs, p)
 	}
 	return pkgs
+}
+
+// pkgStat is a per-package rollup of build outcomes across history.
+type pkgStat struct {
+	LastEnd    int64  // end time of the most recent attempt (any result)
+	LastResult string // result of that most recent attempt
+	LastOk     int64  // end time of the most recent successful attempt
+}
+
+// buildStats folds state/<arch>/history.jsonl into per-package last-attempt and
+// last-success timestamps. Each line is one build sweep with per-package results;
+// we keep, per package, the newest attempt and the newest "ok". Empty if no
+// history yet. Cheap enough to recompute per /api/status call for a LAN tool.
+func buildStats(arch string) map[string]pkgStat {
+	m := map[string]pkgStat{}
+	fh, err := os.Open(filepath.Join(data, "state", arch, "history.jsonl"))
+	if err != nil {
+		return m
+	}
+	defer fh.Close()
+	sc := bufio.NewScanner(fh)
+	sc.Buffer(make([]byte, 0, 64*1024), 8*1024*1024)
+	for sc.Scan() {
+		line := sc.Bytes()
+		if len(line) == 0 {
+			continue
+		}
+		var rec struct {
+			End      int64 `json:"end"`
+			Start    int64 `json:"start"`
+			Packages []struct {
+				Name   string `json:"name"`
+				Result string `json:"result"`
+			} `json:"packages"`
+		}
+		if json.Unmarshal(line, &rec) != nil {
+			continue
+		}
+		ts := rec.End
+		if ts == 0 {
+			ts = rec.Start
+		}
+		for _, p := range rec.Packages {
+			s := m[p.Name]
+			if ts >= s.LastEnd {
+				s.LastEnd, s.LastResult = ts, p.Result
+			}
+			if p.Result == "ok" && ts >= s.LastOk {
+				s.LastOk = ts
+			}
+			m[p.Name] = s
+		}
+	}
+	return m
 }
 
 // dlist reads a dasel array selector into a []string (quotes stripped).
@@ -242,7 +364,8 @@ func hStatus(w http.ResponseWriter, r *http.Request) {
 		Groups  []groupInfo `json:"groups"`
 		Paused  bool        `json:"paused"`
 		Running []string    `json:"running"`
-		Disk    string      `json:"disk"`
+		Disk    diskInfo    `json:"disk"`
+		CPUPct  int         `json:"cpuPct"`
 		Now     int64       `json:"now"`
 	}
 	var res resp
@@ -261,6 +384,7 @@ func hStatus(w http.ResponseWriter, r *http.Request) {
 		if b, err := os.ReadFile(filepath.Join(data, "state", a, "last-build.json")); err == nil {
 			ai.LastBuild = json.RawMessage(b)
 		}
+		ai.Current = currentBuild(a)
 		if t, err := run("systemctl", "show", "pkgmirror-build@"+a+".timer",
 			"-p", "NextElapseUSecRealtime", "--value"); err == nil {
 			ai.TimerNext = t
@@ -275,10 +399,87 @@ func hStatus(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	if d, err := run("df", "-h", data); err == nil {
-		res.Disk = d
-	}
+	res.Disk = diskUsage(data)
+	res.CPUPct = cpuUsage()
 	writeJSON(w, res)
+}
+
+// diskInfo is the parsed, labeled disk usage for the filesystem holding `data`.
+type diskInfo struct {
+	Size  string `json:"size"`  // total, human-readable (e.g. "32G")
+	Used  string `json:"used"`  // used (e.g. "11G")
+	Avail string `json:"avail"` // free (e.g. "22G")
+	Pct   int    `json:"pct"`   // percent used (0-100)
+}
+
+// diskUsage runs df on the given path and returns its usage as labeled fields.
+// --output pins the columns so parsing doesn't depend on device/mount naming.
+func diskUsage(path string) diskInfo {
+	var di diskInfo
+	out, err := run("df", "-h", "--output=size,used,avail,pcent", path)
+	if err != nil {
+		return di
+	}
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	if len(lines) < 2 {
+		return di
+	}
+	f := strings.Fields(lines[len(lines)-1])
+	if len(f) < 4 {
+		return di
+	}
+	di.Size, di.Used, di.Avail = f[0], f[1], f[2]
+	di.Pct, _ = strconv.Atoi(strings.TrimSuffix(f[3], "%"))
+	return di
+}
+
+// cpuUsage returns busy CPU percent (0-100) for the container, measured as the
+// delta between the two most recent samples of /proc/stat. Under lxcfs (Proxmox
+// LXC) /proc/stat is container-scoped, so this reflects the container's own load.
+// The first call after startup has no prior sample and returns 0.
+var cpuPrev struct {
+	sync.Mutex
+	total, idle uint64
+	seen        bool
+}
+
+func cpuUsage() int {
+	b, err := os.ReadFile("/proc/stat")
+	if err != nil {
+		return 0
+	}
+	line := b
+	if i := strings.IndexByte(string(b), '\n'); i >= 0 {
+		line = b[:i]
+	}
+	f := strings.Fields(string(line))
+	if len(f) < 5 || f[0] != "cpu" {
+		return 0
+	}
+	var total, idle uint64
+	for i := 1; i < len(f); i++ {
+		v, _ := strconv.ParseUint(f[i], 10, 64)
+		total += v
+		if i == 4 || i == 5 { // idle + iowait
+			idle += v
+		}
+	}
+	cpuPrev.Lock()
+	defer cpuPrev.Unlock()
+	prevTotal, prevIdle, seen := cpuPrev.total, cpuPrev.idle, cpuPrev.seen
+	cpuPrev.total, cpuPrev.idle, cpuPrev.seen = total, idle, true
+	if !seen || total <= prevTotal {
+		return 0
+	}
+	dt := total - prevTotal
+	di := idle - prevIdle
+	pct := int((dt - di) * 100 / dt)
+	if pct < 0 {
+		pct = 0
+	} else if pct > 100 {
+		pct = 100
+	}
+	return pct
 }
 
 func fileExists(p string) bool { _, err := os.Stat(p); return err == nil }
@@ -315,7 +516,8 @@ func hBuild(w http.ResponseWriter, r *http.Request) {
 	}
 	unit := fmt.Sprintf("pkgmirror-adhoc-%d", time.Now().UnixNano())
 	sysArgs := []string{"systemd-run", "--unit=" + unit, "--uid=pkgmirror",
-		"--setenv=PKGMIRROR_DATA=" + data, "--property=WorkingDirectory=" + root,
+		"--setenv=PKGMIRROR_DATA=" + data, "--setenv=PKGMIRROR_UNIT=" + unit,
+		"--property=WorkingDirectory=" + root,
 		"bash", filepath.Join(root, "bin/build.sh")}
 	sysArgs = append(sysArgs, args...)
 	if out, err := run("sudo", sysArgs...); err != nil {
@@ -404,6 +606,163 @@ func hBuilds(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, out)
+}
+
+// scanHistory streams the build-sweep records in one arch's history.jsonl,
+// calling fn for each with its parsed end time (falling back to start) and the
+// raw line. Used by the merged builds feed and per-package history.
+func scanHistory(arch string, fn func(end int64, raw []byte)) {
+	fh, err := os.Open(filepath.Join(data, "state", arch, "history.jsonl"))
+	if err != nil {
+		return
+	}
+	defer fh.Close()
+	sc := bufio.NewScanner(fh)
+	sc.Buffer(make([]byte, 0, 64*1024), 8*1024*1024)
+	for sc.Scan() {
+		line := sc.Bytes()
+		if len(line) == 0 {
+			continue
+		}
+		var t struct {
+			Start int64 `json:"start"`
+			End   int64 `json:"end"`
+		}
+		if json.Unmarshal(line, &t) != nil {
+			continue
+		}
+		end := t.End
+		if end == 0 {
+			end = t.Start
+		}
+		// copy: Scanner reuses its buffer across iterations
+		fn(end, append([]byte(nil), line...))
+	}
+}
+
+// hAllBuilds serves a newest-first, paged feed of build sweeps merged across all
+// arches. Query: page (1-based, default 1), per (default 25, max 200).
+func hAllBuilds(w http.ResponseWriter, r *http.Request) {
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	per, _ := strconv.Atoi(r.URL.Query().Get("per"))
+	if per < 1 {
+		per = 25
+	} else if per > 200 {
+		per = 200
+	}
+	type rec struct {
+		end int64
+		raw json.RawMessage
+	}
+	var all []rec
+	for _, a := range arches() {
+		scanHistory(a, func(end int64, raw []byte) {
+			all = append(all, rec{end, json.RawMessage(raw)})
+		})
+	}
+	sort.Slice(all, func(i, j int) bool { return all[i].end > all[j].end })
+	total := len(all)
+	start := (page - 1) * per
+	if start > total {
+		start = total
+	}
+	end := start + per
+	if end > total {
+		end = total
+	}
+	builds := make([]json.RawMessage, 0, end-start)
+	for _, r := range all[start:end] {
+		builds = append(builds, r.raw)
+	}
+	writeJSON(w, map[string]any{"total": total, "page": page, "per": per, "builds": builds})
+}
+
+// hPkgHistory returns every build attempt for one package in one arch (newest
+// first), each carrying the package's own start epoch — which keys its saved log.
+func hPkgHistory(w http.ResponseWriter, r *http.Request) {
+	a, pkg := r.PathValue("arch"), r.PathValue("pkg")
+	if !archExists(a) || !nameRe.MatchString(pkg) {
+		httpErr(w, http.StatusBadRequest, "bad arch/pkg")
+		return
+	}
+	type attempt struct {
+		SweepStart int64  `json:"sweep_start"`
+		SweepEnd   int64  `json:"sweep_end"`
+		Filter     string `json:"filter"`
+		Result     string `json:"result"`
+		Version    string `json:"version"`
+		Seconds    int64  `json:"seconds"`
+		Start      int64  `json:"start"` // per-package start; keys logs/<pkg>/<start>.log
+		HasLog     bool   `json:"has_log"`
+	}
+	var out []attempt
+	scanHistory(a, func(_ int64, raw []byte) {
+		var rec struct {
+			Start    int64  `json:"start"`
+			End      int64  `json:"end"`
+			Filter   string `json:"filter"`
+			Packages []struct {
+				Name    string `json:"name"`
+				Result  string `json:"result"`
+				Version string `json:"version"`
+				Seconds int64  `json:"seconds"`
+				PStart  int64  `json:"start"`
+			} `json:"packages"`
+		}
+		if json.Unmarshal(raw, &rec) != nil {
+			return
+		}
+		for _, p := range rec.Packages {
+			if p.Name != pkg {
+				continue
+			}
+			at := attempt{SweepStart: rec.Start, SweepEnd: rec.End, Filter: rec.Filter,
+				Result: p.Result, Version: p.Version, Seconds: p.Seconds, Start: p.PStart}
+			if p.PStart > 0 {
+				if _, err := os.Stat(filepath.Join(data, "state", a, "logs", pkg,
+					strconv.FormatInt(p.PStart, 10)+".log")); err == nil {
+					at.HasLog = true
+				}
+			}
+			out = append(out, at)
+		}
+	})
+	// newest first
+	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
+		out[i], out[j] = out[j], out[i]
+	}
+	writeJSON(w, out)
+}
+
+// hBuildLog serves a persisted per-package build log (logs/<pkg>/<ts>.log).
+func hBuildLog(w http.ResponseWriter, r *http.Request) {
+	a, pkg, ts := r.PathValue("arch"), r.PathValue("pkg"), r.PathValue("ts")
+	if !archExists(a) || !nameRe.MatchString(pkg) || !isDigits(ts) {
+		httpErr(w, http.StatusBadRequest, "bad request")
+		return
+	}
+	b, err := os.ReadFile(filepath.Join(data, "state", a, "logs", pkg, ts+".log"))
+	if err != nil {
+		httpErr(w, http.StatusNotFound, "no log for this build")
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Write(b)
+}
+
+func isDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // ---- package management ----------------------------------------------------
