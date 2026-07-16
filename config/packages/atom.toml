@@ -1,0 +1,25 @@
+[[package]]
+  name = 'pkgmirror-hello'
+  source = 'local'
+
+[[package]]
+  name = 'linux-atom'
+  source = 'git'
+  url = 'https://github.com/N0t4R0b0t/linux-atom.git'
+
+[[package]]
+  name = 'moonlight-embedded'
+  source = 'aur'
+
+[[package]]
+  name = 'yay'
+  source = 'aur'
+
+[[package]]
+  name = 'guake'
+  source = 'upstream'
+
+[[package]]
+  name = 'ca-certificates-cacert'
+  source = 'aur'
+

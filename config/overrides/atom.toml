@@ -1,0 +1,70 @@
+[[override]]
+  name = 'openssl'
+  notes = 'i686 Configure target is linux-x86, not linux-CARCH'
+  patches = ['i686-target.patch']
+
+[[override]]
+  name = 'libdrm'
+  notes = 'test programs need cairo (checkdepends only); skip building them, we run --nocheck anyway'
+  patches = ['no-test-progs.patch']
+
+[[override]]
+  name = 'pango'
+  notes = 'Real version bump chain: meson 1.8.2 (built locally) -> gi-docgen 2024.1 (built locally) -> glib2 2.84.0 (built locally, properly split into glib2/glib2-devel matching real upstream Arch) -> gobject-introspection 1.84.0 -> harfbuzz 8.4.0 -> fontconfig 2.17.1, all built for real, no floor-patching. pango own makedepends already lists glib2-devel explicitly and our glib2 build now provides it for real, so no patch needed here.'
+  pin = '1-1.57.1-1'
+
+[[override]]
+  name = 'harfbuzz'
+  notes = 'pango 1.57.1 needs harfbuzz>=8.4.0; archlinux32 extra has 7.1.0. Bumped via real rebuild, not archive binary import. no-icu.patch re-verified needed at this version (archlinux32 libicu still too old for harfbuzz-icu subpackage)'
+  patches = ['no-icu.patch']
+  pin = '8.4.0-1'
+
+[[override]]
+  name = 'mesa-amber'
+  notes = '(1) 21.3.9-6 tag has the dead mesa.freedesktop.org source URL, moved to archive.mesa3d.org. (2) mesa bundles a 2012 C11 threads.h emulation whose once_flag/ONCE_FLAG_INIT/call_once conflict with modern glibc (>=2.34) own native versions. Guard only those 3 declarations in the bundled threads_posix.h -- leave everything else (mtx_t/cnd_t/thrd_t typedefs, _MTX_INITIALIZER_NP, all wrapper functions) untouched, since mesa code assumes those ARE pthread types and mixes raw pthread_* calls with them; swapping the whole header for the system one cascades into ~20 unrelated failures. Also fixes two genuine missing-header bugs (fossilize_db.c errno.h, slab.c stdlib.h) only reachable once the threads.h issue stopped masking them. Verified with a full from-scratch build, zero errors.'
+  patches = ['dead-source-url.patch', 'glibc-c11-threads.patch']
+
+[[override]]
+  mem_per_job_mb = 900
+  name = 'linux-atom'
+  notes = 'kernel C TUs run leaner than the 1536MB fleet default; unlocks full nproc'
+
+[[override]]
+  name = 'moonlight-embedded'
+  notes = 'archlinux32 librsvg (2.58.3-1.0) still NEEDs libxml2.so.2, but current libxml2 (2.15.1-4.0) only ships libxml2.so.16 (upstream soname bump, librsvg never rebuilt against it) -- breaks the link via ffmpegs optional svg demuxer. moonlight-embedded never touches SVG at runtime, so --allow-shlib-undefined is safe: skips validating librsvgs own broken transitive deps at link time'
+  patches = ['allow-shlib-undefined.patch']
+
+[[override]]
+  name = 'freetype2'
+  notes = 'archlinux32 librsvg (2:2.58.3-1.0, repo-wide) still NEEDs libxml2.so.2 but current libxml2 (2.15.1-4.0) only ships .so.16 (upstream soname bump, librsvg never rebuilt) -- breaks linking ftinspect (qt5) and ftview/ftgrid (direct librsvg link). Drop qt5-base makedepend (ftinspect is meson-optional, only built if Qt5 found) and pass -Dlibrsvg=disabled (an explicit ft2demos meson option) to skip the other. Same repo-wide bug already hit moonlight-embedded.'
+  patches = ['no-qt5-ftinspect.patch', 'no-librsvg-demos.patch']
+
+[[override]]
+  name = 'fontconfig'
+  notes = 'pango 1.57.1 needs fontconfig>=2.17.0 (FcConfigSetDefaultSubstitute); needs meson>=1.6.1, now buildable since we build our own meson (see meson override notes). Real version bump, not a patched floor.'
+  pin = '2-2.17.1-1'
+
+[[override]]
+  name = 'glib2'
+  notes = 'pango 1.57.1 needs glib>=2.82; gobject-introspection 1.84.0 needs glib2==2.84.0 exactly'
+  pin = '2.84.0-1'
+
+[[override]]
+  name = 'gobject-introspection'
+  notes = 'pango 1.57.1 needs gobject-introspection>=1.83.2 (archlinux32 extra has 1.80.1)'
+  pin = '1.84.0-1'
+
+[[override]]
+  name = 'meson'
+  notes = 'archlinux32 lacks python-strictyaml (used only by the docs.build reference-manual generator, not the actual wheel build); drop the docs step + that makedepend. Built via our own pipeline instead of importing a prebuilt archive binary since meson noarch package site-packages path is tied to the builders python minor version, which drifted from ours (python3.11.8)'
+  patches = ['no-docs.patch']
+  pin = '1.8.2-2'
+
+[[override]]
+  name = 'gi-docgen'
+  notes = 'glib2 2.84 needs gi-docgen>=2024.1; archlinux32 extra has 2023.3'
+  pin = '2024.1-1'
+
+[[override]]
+  name = 'gdk-pixbuf2'
+  notes = 'archlinux32 never split glib2/glib2-devel, but our OWN glib2 build (see glib2 override) does -- this package genuinely needs glib2-devel (glib-compile-resources, for tests/resources.h/c) once consuming our split build. Dropped no-glib2-devel.patch 2026-07-15: it was correct against archlinux32 unsplit glib2, actively wrong (breaks the .gir/resources build step) against ours. Dropped fix-atom-march-sigill.patch 2026-07-16: root cause was actually libgio (glib2) using MOVBE (a real Atom instruction the build host CPU lacks) -- fixed at the arch level via -mno-movbe in atom.toml cflags instead of per-package CFLAGS overrides.'

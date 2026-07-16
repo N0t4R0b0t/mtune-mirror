@@ -1,0 +1,23 @@
+[[package]]
+  name = 'pkgmirror-hello'
+  source = 'local'
+
+[[package]]
+  name = 'visual-studio-code-bin'
+  source = 'aur'
+
+[[package]]
+  name = 'brother-brgenml1'
+  source = 'aur'
+
+[[package]]
+  name = 'claude-code'
+  source = 'aur'
+
+[[package]]
+  name = 'claude-desktop-appimage'
+  source = 'aur'
+
+[[package]]
+  name = 'synergy3-bin'
+  source = 'aur'

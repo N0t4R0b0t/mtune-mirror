@@ -1,0 +1,36 @@
+# Arch registry entry: "atom" — Intel Atom N270 (Acer Aspire One), i686.
+# This file is the extensibility seam: adding a new arch = dropping a new .toml here
+# (see bin/add-arch.sh) plus bootstrapping its chroot.
+
+name      = "atom"
+
+# base drives build personality and chroot bootstrap path.
+#   i686   -> builds wrapped in `linux32`/`setarch i686`, chroot from archlinux32 mirrors
+#   x86_64 -> native, standard Arch devtools
+base      = "i686"
+
+# toolchain records which devtools flavor bootstraps/builds this arch.
+#   devtools32 -> archlinux32 (i686)
+#   devtools   -> standard Arch (x86_64)
+toolchain = "devtools32"
+
+# Target CPU tuning injected as CFLAGS/CXXFLAGS when building this arch's packages.
+# -mno-movbe: -march=atom legitimately enables MOVBE (a real Atom N270/Bonnell
+# instruction), but the build host's own CPU (a pre-Haswell Xeon E5-2450 v2,
+# confirmed via /proc/cpuinfo, 2026-07-16) doesn't have it -- Intel didn't add
+# MOVBE to mainstream/server parts until Haswell (2013). GCC's optimizer
+# opportunistically emits MOVBE for ordinary byte-swap patterns (confirmed via
+# kernel trap log + objdump: libgio's gvdb header parsing), so any package's
+# code can trip this silently -- not a compiler bug, a genuine build-host/
+# target ISA mismatch. Traced from a gdk-pixbuf2 build failure that turned out
+# to be libgio (glib2) SIGILLing on ANY file load, which explains real browser
+# crashes/misbehavior on image-heavy pages on the deployed Aspire One.
+cflags    = "-march=atom -mtune=atom -mno-movbe -O2 -pipe"
+
+# Package groups this arch builds (see config/groups/<name>.toml).
+groups    = ["essentials", "essentials-atom"]
+
+[chroot]
+# $arch and $repo are expanded by pacman when it reads the generated mirrorlist.
+mirror  = "https://mirror.archlinux32.org/$arch/$repo"
+keyring = "archlinux32-keyring"

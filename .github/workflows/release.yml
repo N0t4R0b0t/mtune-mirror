@@ -1,0 +1,110 @@
+name: Release
+
+# Tag push only (v*, e.g. v0.1.0). install.sh is fetched straight from the repo
+# at any ref, so a "release" here is really: (1) a pinned, citable git tag with
+# release notes, and (2) a prebuilt pkgmirror-web binary, since that's the one
+# actual compiled artifact in this project (everything else is bash/toml/patches
+# consumed as source). The binary is optional — container-setup.sh always builds
+# its own from source — this just saves a Go toolchain run on install.
+#
+# Artifacts go to R2, not GitHub Releases storage (private-account space limits;
+# see R2_* secrets below) — but R2 itself is optional: if those secrets aren't
+# configured, upload-r2 skips cleanly and github-release still runs, just
+# without the prebuilt-binary link in the notes. The GitHub Release itself
+# stays small either way: notes + install.sh.
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  build-web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: web/go.mod
+      - name: build static linux/amd64 binary
+        env:
+          CGO_ENABLED: '0'
+          GOOS: linux
+          GOARCH: amd64
+        run: go build -trimpath -ldflags="-s -w" -o pkgmirror-web .
+      - name: package
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          tar -czf "pkgmirror-web-${tag}-linux-amd64.tar.gz" pkgmirror-web
+          sha256sum "pkgmirror-web-${tag}-linux-amd64.tar.gz" > "pkgmirror-web-${tag}-linux-amd64.tar.gz.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pkgmirror-web
+          path: web/pkgmirror-web-*.tar.gz*
+          retention-days: 1
+
+  upload-r2:
+    needs: build-web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: pkgmirror-web
+      - name: upload to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          # R2_* secrets are optional (see the top-of-file comment) — the release
+          # itself (tag + notes + install.sh) doesn't need them, only the
+          # prebuilt-binary convenience does. Skip cleanly rather than failing
+          # the whole release when they're not configured yet.
+          if [ -z "$R2_ACCOUNT_ID" ] || [ -z "$R2_BUCKET" ] || [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+            echo "R2_* secrets not set — skipping prebuilt-binary upload (release still proceeds without it)."
+            exit 0
+          fi
+          for f in pkgmirror-web-*.tar.gz pkgmirror-web-*.tar.gz.sha256; do
+            aws s3 cp "$f" "s3://${R2_BUCKET}/pkgmirror/${GITHUB_REF_NAME}/$f" \
+              --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          done
+
+  github-release:
+    needs: upload-r2
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: release notes
+        env:
+          R2_PUBLIC_URL_BASE: ${{ vars.R2_PUBLIC_URL_BASE }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          {
+            echo "## Install"
+            echo
+            echo '```bash'
+            echo "bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${tag}/install.sh)\""
+            echo '```'
+            echo
+            echo "Pins the install to this release. Update later with \`install.sh update\` (from the Proxmox host) or \`pkgmirror-update\` (from inside the container) — both track \`main\` unless you set \`REPO_REF=${tag}\`."
+            echo
+            if [ -n "$R2_PUBLIC_URL_BASE" ]; then
+              echo "## Prebuilt pkgmirror-web binary"
+              echo
+              echo "Optional — container-setup.sh always builds its own from source; this just skips that step."
+              echo
+              echo "${R2_PUBLIC_URL_BASE%/}/pkgmirror/${tag}/pkgmirror-web-${tag}-linux-amd64.tar.gz"
+            fi
+          } > release-notes.md
+      - name: create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --notes-file release-notes.md \
+            install.sh

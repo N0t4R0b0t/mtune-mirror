@@ -1,0 +1,21 @@
+# Smoke-test package for the pkgmirror build pipeline (manjaro/x86_64).
+# Tiny C build: fast, no deps -- verifies the chroot actually builds packages
+# against Manjaro's own repos before trying anything real.
+pkgname=pkgmirror-hello
+pkgver=1.0
+pkgrel=1
+pkgdesc="pkgmirror build pipeline smoke test"
+arch=('x86_64')
+url="https://example.invalid/pkgmirror"
+license=('MIT')
+options=('!debug')
+build() {
+  cat > hello.c <<'CSRC'
+#include <stdio.h>
+int main(void) { puts("hello from pkgmirror (manjaro)"); return 0; }
+CSRC
+  ${CC:-cc} ${CFLAGS} -o hello hello.c
+}
+package() {
+  install -Dm755 hello "$pkgdir/usr/bin/pkgmirror-hello"
+}

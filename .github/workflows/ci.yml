@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck (severity=error)
+        run: |
+          shellcheck -S error bin/*.sh bin/lib/*.sh installer/*.sh docker/*.sh
+      - name: bash -n syntax check
+        run: |
+          find bin installer docker -name '*.sh' -print0 | xargs -0 -n1 bash -n
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: web/go.mod
+      - run: go build ./...
+      - run: go vet ./...
+
+  toml:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: validate TOML syntax
+        run: |
+          python3 - <<'EOF'
+          import pathlib, sys, tomllib
+          bad = []
+          for p in pathlib.Path("config").rglob("*.toml"):
+              try:
+                  tomllib.loads(p.read_text())
+              except Exception as e:
+                  bad.append(f"{p}: {e}")
+          if bad:
+              print("\n".join(bad))
+              sys.exit(1)
+          EOF

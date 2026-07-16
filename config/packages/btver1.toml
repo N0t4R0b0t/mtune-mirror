@@ -1,0 +1,32 @@
+[[package]]
+  name = 'pkgmirror-hello'
+  source = 'local'
+
+[[package]]
+  name = 'moonlight-qt'
+  source = 'aur'
+
+[[package]]
+  name = 'linux-btver1'
+  source = 'git'
+  url = 'https://github.com/N0t4R0b0t/linux-btver1.git'
+
+[[package]]
+  name = 'libva-vdpau-driver'
+  source = 'aur'
+
+[[package]]
+  name = 'yay'
+  source = 'aur'
+
+[[package]]
+  name = 'spotify-dev'
+  source = 'aur'
+
+[[package]]
+  name = 'chromium-widevine'
+  source = 'aur'
+
+[[package]]
+  name = 'portaudio'
+  source = 'upstream'

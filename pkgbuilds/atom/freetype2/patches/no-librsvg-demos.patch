@@ -1,0 +1,10 @@
+--- a/PKGBUILD
++++ b/PKGBUILD
+@@ -65,6 +65,7 @@
+ build() {
+   local meson_options=(
+     -D freetype2:default_library=shared
++    -D librsvg=disabled
+   )
+ 
+   # Build FreeType as part of the demos

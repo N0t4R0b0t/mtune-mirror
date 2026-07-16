@@ -1,0 +1,10 @@
+--- a/PKGBUILD
++++ b/PKGBUILD
+@@ -28,7 +28,6 @@
+   librsvg
+   libx11
+   meson
+-  qt5-base
+ )
+ source=(
+   https://download-mirror.savannah.gnu.org/releases/freetype/freetype-$pkgver.tar.xz{,.sig}

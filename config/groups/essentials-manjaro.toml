@@ -1,0 +1,41 @@
+# Package group: "essentials-manjaro" — the workstation's actually-wanted AUR/
+# odd-repo packages, built centrally on CT 9101 instead of compiling locally on
+# the workstation's own CPU. Unlike essentials-atom/essentials-btver1, this
+# group isn't CPU-tuning-motivated (config/arches/manjaro.toml deliberately
+# sets cflags="") -- it exists purely to offload build time. Enabled only on
+# the "manjaro" arch.
+#
+# Every package here needs a matching [[package]] entry with source='aur' in
+# config/packages/manjaro.toml -- group membership alone doesn't set source
+# (see bin/lib/common.sh effective_packages), and none of these are in
+# Manjaro's own official repos.
+#
+# Rationale per package:
+#   visual-studio-code-bin    Microsoft's official VS Code binary release.
+#   brother-brgenml1          LPR/CUPS driver for the workstation's Brother
+#                              printer -- proprietary, download-at-build-time
+#                              blob, not in any official repo.
+#   claude-code                Community-maintained AUR wrapper (Anthropic
+#                              doesn't publish a native Arch/Manjaro package).
+#   claude-desktop-appimage    Same -- community AppImage repackaging.
+#   synergy3-bin               NOT the literal-name "synergy" package -- that
+#                              one (3.4.0) needs electron38 as a dependency,
+#                              which isn't in any repo and would mean building
+#                              full Chromium from source (hours, tens of GB)
+#                              just for synergy's GUI shell. synergy3-bin
+#                              downloads Symless's own prebuilt proprietary
+#                              binary directly instead -- sane deps, no
+#                              Electron, and a much closer version match to
+#                              what's actually installed (3.6.3 vs the
+#                              workstation's 3.6.1).
+
+name        = "essentials-manjaro"
+description = "Workstation AUR/odd-repo packages, offloaded off the local CPU"
+
+packages = [
+  "visual-studio-code-bin",
+  "brother-brgenml1",
+  "claude-code",
+  "claude-desktop-appimage",
+  "synergy3-bin",
+]

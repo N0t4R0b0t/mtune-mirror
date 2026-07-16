@@ -1,0 +1,17 @@
+# Package group: "encoders" — video ENCODERS. Opt-in, NOT enabled by default.
+#
+# Split out of essentials because encoding is pointless on the Atom N270 (it can't
+# realistically encode anything) and rare on the C-60. Enable on an arch only if that
+# machine actually encodes video:
+#   bin/group.sh enable btver1 encoders
+#
+# These are heavily hand-asm + runtime-dispatched, so -march's benefit is modest; the
+# main reason to build them here is patching/consistency, not raw speed.
+
+name        = "encoders"
+description = "Video encoders (x264/x265) — opt-in per arch; off by default"
+
+packages = [
+  "x264",
+  "x265",
+]

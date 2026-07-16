@@ -1,0 +1,52 @@
+--- a/PKGBUILD
++++ b/PKGBUILD
+@@ -49,6 +49,49 @@
+   # its GPU cache; otherwise it can cause pages to render incorrectly.
+   # https://bugs.launchpad.net/ubuntu/+source/chromium-browser/+bug/2020604
+   echo "$pkgver-arch$epoch.$pkgrel" >VERSION
++
++  # Modern glibc (>=2.34) ships real C11 <threads.h>, which conflicts with
++  # mesa's own bundled emulation (yohhoy/c11-threads, 2012) on exactly one
++  # pair of declarations: once_flag/ONCE_FLAG_INIT/call_once. mesa's code
++  # elsewhere assumes cnd_t/mtx_t/thrd_t ARE pthread_cond_t/mutex_t/t (the
++  # bundled shim typedefs them directly) and mixes raw pthread_* calls with
++  # them freely -- so swapping the whole header for the system one breaks
++  # far more than it fixes (confirmed: cascades into ~20 unrelated failures,
++  # including a real type mismatch passing a raw pthread_cond_t* where mesa
++  # expected its own cnd_t in egl_dri2.c). Guard only the 3 conflicting
++  # declarations instead; leave everything else in the bundled shim
++  # (including its _MTX_INITIALIZER_NP convenience macro, which the system
++  # header has no equivalent for) untouched.
++  python3 - <<'PYEOF'
++p = "include/c11/threads_posix.h"
++s = open(p).read()
++guard = "!defined(__GLIBC__) || !(__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 34))"
++
++old1 = "#define ONCE_FLAG_INIT PTHREAD_ONCE_INIT"
++assert old1 in s, "ONCE_FLAG_INIT anchor not found"
++s = s.replace(old1, f"#if {guard}\n{old1}\n#endif", 1)
++
++old2 = "typedef pthread_once_t  once_flag;"
++assert old2 in s, "once_flag anchor not found"
++s = s.replace(old2, f"#if {guard}\n{old2}\n#endif", 1)
++
++old3 = ("static inline void\n"
++        "call_once(once_flag *flag, void (*func)(void))\n"
++        "{\n"
++        "    pthread_once(flag, func);\n"
++        "}")
++assert old3 in s, "call_once anchor not found"
++s = s.replace(old3, f"#if {guard}\n{old3}\n#endif", 1)
++open(p, "w").write(s)
++PYEOF
++
++  # fossilize_db.c uses errno/EAGAIN without including <errno.h> -- masked
++  # until now because earlier files aborted the build first. GCC's own note
++  # points at the exact fix.
++  sed -i '/#include <assert.h>/a #include <errno.h>' src/util/fossilize_db.c
++
++  # slab.c uses malloc/free without including <stdlib.h> -- same pattern.
++  sed -i '/#include <string.h>/a #include <stdlib.h>' src/util/slab.c
+ }
+ 
+ build() {

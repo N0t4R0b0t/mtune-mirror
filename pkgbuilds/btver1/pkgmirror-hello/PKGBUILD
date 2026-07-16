@@ -1,0 +1,20 @@
+# Smoke-test package for the pkgmirror build pipeline (btver1/x86_64).
+# Tiny C build: fast, no deps, exercises the tuned CFLAGS from arches/btver1.toml.
+pkgname=pkgmirror-hello
+pkgver=1.0
+pkgrel=1
+pkgdesc="pkgmirror build pipeline smoke test"
+arch=('x86_64')
+url="https://example.invalid/pkgmirror"
+license=('MIT')
+options=('!debug')
+build() {
+  cat > hello.c <<'CSRC'
+#include <stdio.h>
+int main(void) { puts("hello from pkgmirror (btver1)"); return 0; }
+CSRC
+  ${CC:-cc} ${CFLAGS} -o hello hello.c
+}
+package() {
+  install -Dm755 hello "$pkgdir/usr/bin/pkgmirror-hello"
+}

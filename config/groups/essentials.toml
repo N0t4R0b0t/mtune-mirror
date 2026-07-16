@@ -1,0 +1,44 @@
+# Package group: "essentials" — the shared, universal core: high-leverage libraries
+# BOTH targets run constantly and clearly benefit from -march/-mtune tuning.
+#
+# Selection criteria (all must hold):
+#   1. CPU-bound hot loops     — real time in numeric/SIMD-amenable code.
+#   2. High leverage           — a *shared library* many things link (one rebuild
+#                                helps the whole system), not a leaf app.
+#   3. Realistic on BOTH boxes — something the Atom N270 and C-60 actually run.
+#
+# Kept lean on purpose. Divergence between arches is expressed by enabling DIFFERENT
+# groups per arch (config/arches/<arch>.toml `groups`), not by bloating this list:
+#   - encoders (x264/x265, …) live in the "encoders" group — opt-in, off by default
+#     (pointless on the Atom; enable on btver1 only if it actually encodes).
+#   - Atom-specific tuning will get its own group + a config-tuned kernel, built from
+#     an inspection of the real machine.
+#
+# Note: several members (ffmpeg, libvpx, openssl, …) already use runtime-dispatched
+# hand-written asm, so -march mostly helps their C/glue paths; the biggest wins come
+# from the autovectorized libs (freetype2, harfbuzz, pixman, cairo, image/text).
+
+name        = "essentials"
+description = "Shared core: libraries both targets run and benefit from tuning"
+
+packages = [
+  # graphics / text rendering (hot on every GUI frame; weak GPUs fall back to CPU)
+  # NOTE: the GL driver itself is machine-specific and lives in the per-arch groups
+  # (essentials-atom -> mesa-amber for the GMA950; essentials-btver1 -> mesa).
+  "libdrm", "pixman", "cairo", "freetype2", "harfbuzz",
+  # image decode (web pages, thumbnails)
+  "libjpeg-turbo", "libpng", "libwebp", "giflib",
+  # video decode (VP8/9, Theora). ffmpeg moved to essentials-btver1: its codec hot
+  # paths are runtime-dispatched hand asm (unaffected by -march either way), and
+  # the atom/i686+archlinux32 combo hits real compile bugs (LTO+legacy-MMX asm,
+  # a GCC-15-vs-mathops.h codegen mismatch) for a build that buys nothing.
+  "libvpx", "libtheora",
+  # audio
+  "lame", "flac", "opus", "libvorbis", "speex",
+  # compression (linked by nearly everything — highest leverage)
+  "zlib", "zstd", "xz", "lz4", "bzip2",
+  # crypto (TLS on the critical path; SIMD-sensitive ciphers/hashes)
+  "openssl", "libgcrypt", "nettle",
+  # web/data stack (regex + embedded db, used everywhere)
+  "pcre2", "sqlite",
+]

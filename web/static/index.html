@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>pkgmirror</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <button id="burger" class="burger" onclick="toggleDrawer()" aria-label="Toggle menu" aria-expanded="false">☰</button>
+    <h1>📦 pkgmirror</h1>
+    <span class="grow"></span>
+    <span id="paused-badge" class="badge err" style="display:none">PAUSED</span>
+    <span class="stats" id="stats"></span>
+    <button id="pause-btn" onclick="togglePause()">Pause</button>
+    <button id="stop-btn" class="danger" onclick="stopBuilds()">Stop builds</button>
+  </header>
+
+  <!-- left slide-out menu -->
+  <aside class="drawer" id="drawer">
+    <div class="drawer-head">📦 pkgmirror</div>
+    <nav id="nav">
+      <a href="#/dashboard" data-view="dashboard">Dashboard</a>
+      <a href="#/packages" data-view="packages">Packages</a>
+      <a href="#/builds" data-view="builds">Builds</a>
+      <a href="#/settings" data-view="settings">Settings</a>
+      <a href="#/help" data-view="help">Help</a>
+    </nav>
+  </aside>
+  <div class="backdrop" id="backdrop" onclick="closeDrawer()"></div>
+
+  <main id="view"><!-- router renders here --></main>
+
+  <!-- live build console (docked, independent of the current view) -->
+  <div class="console" id="console">
+    <div class="bar">
+      <strong id="console-title">build</strong>
+      <span id="console-state" class="badge muted">running</span>
+      <span class="grow"></span>
+      <button onclick="closeConsole()">close</button>
+    </div>
+    <pre id="console-out"></pre>
+  </div>
+
+  <!-- PKGBUILD editor -->
+  <div class="modal" id="editor">
+    <div class="box">
+      <div class="bar">
+        <strong id="editor-title">PKGBUILD</strong>
+        <span class="grow"></span>
+        <button class="primary" onclick="savePkgbuild()">Save</button>
+        <button onclick="closeEditor()">Cancel</button>
+      </div>
+      <textarea id="editor-text" spellcheck="false"></textarea>
+    </div>
+  </div>
+
+  <!-- per-package details (build history + logs) -->
+  <div class="modal" id="pkgmodal">
+    <div class="box wide">
+      <div class="bar">
+        <strong id="pkgmodal-title">package</strong>
+        <span class="grow"></span>
+        <button onclick="closePkgModal()">Close</button>
+      </div>
+      <div class="pkgmodal-body" id="pkgmodal-body"></div>
+    </div>
+  </div>
+
+  <!-- build sweep details (from the dashboard's Recent builds panel) -->
+  <div class="modal" id="builddetail">
+    <div class="box wide">
+      <div class="bar">
+        <strong id="builddetail-title">build</strong>
+        <span class="grow"></span>
+        <button onclick="closeBuildModal()">Close</button>
+      </div>
+      <div class="pkgmodal-body" id="builddetail-body"></div>
+    </div>
+  </div>
+
+  <!-- per-package build override: pin/patches/skip-check/makepkg args/memory -->
+  <div class="modal" id="ovmodal">
+    <div class="box">
+      <div class="bar">
+        <strong id="ovmodal-title">Override</strong>
+        <span class="grow"></span>
+        <button class="primary" onclick="saveOverride()">Save</button>
+        <button class="danger" onclick="clearOverride()">Clear override</button>
+        <button onclick="closeOverrideModal()">Cancel</button>
+      </div>
+      <div class="ov-form">
+        <label>Version pin
+          <input type="text" id="ov-pin" placeholder="e.g. 7.1.0-1 (git tag) — blank = automatic" autocomplete="off">
+        </label>
+        <label>Skip check()
+          <select id="ov-skipcheck">
+            <option value="">(fleet default)</option>
+            <option value="true">true</option>
+            <option value="false">false</option>
+          </select>
+        </label>
+        <label>Extra makepkg args
+          <input type="text" id="ov-margs" placeholder="comma-separated, e.g. --nodeps" autocomplete="off">
+        </label>
+        <label>Patches
+          <input type="text" id="ov-patches" placeholder="comma-separated filenames" autocomplete="off">
+        </label>
+        <p class="muted small" id="ov-patchpath"></p>
+        <label>Memory per job (MB)
+          <input type="text" id="ov-mem" placeholder="single-package builds only" autocomplete="off">
+        </label>
+        <label>Notes
+          <textarea id="ov-notes" rows="2"></textarea>
+        </label>
+        <p class="muted small" id="ov-hookinfo"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- shared floating dropdown for the add-package typeahead (positioned via JS) -->
+  <div id="ta-dropdown" class="ta-dropdown" style="display:none"></div>
+
+  <!-- toast notifications -->
+  <div id="toasts"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

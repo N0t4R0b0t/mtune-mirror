@@ -1,0 +1,21 @@
+# Claude Code local settings — may contain local paths / infra references
+.claude/
+
+# Built Go binary (built in-container by the installer) — `go build` with no -o,
+# or a wrong -o, defaults to a binary named after the module dir (web/web).
+/web/pkgmirror-web
+pkgmirror-web
+/web/web
+
+# Build / runtime artifacts (never committed; live under /srv/pkgmirror at runtime)
+*.pkg.tar.zst
+*.pkg.tar.xz
+*.db
+*.db.tar.gz
+*.files
+*.log
+
+# Editor / OS cruft
+*.swp
+*~
+.DS_Store

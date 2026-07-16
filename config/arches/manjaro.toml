@@ -1,0 +1,25 @@
+name      = "manjaro"
+base      = "x86_64"
+toolchain = "devtools"
+
+# Empty on purpose -- offloading AUR/odd-repo builds off the workstation's
+# own CPU, not CPU-tuning them. bootstrap-chroot.sh's tuning block is gated
+# on `-n "$cflags"`, so this cleanly leaves Manjaro's own stock makepkg.conf
+# CFLAGS (hardening flags included) untouched.
+cflags    = ""
+
+# essentials-manjaro is the workstation's actually-wanted AUR/odd-repo
+# packages (see config/groups/essentials-manjaro.toml) -- unlike
+# essentials-atom/essentials-btver1 this isn't CPU-tuning-motivated, it's
+# pure build-offload, matching this arch's empty cflags above. Individual
+# extras beyond this group can still be added via bin/add-package.sh.
+groups    = ["essentials-manjaro"]
+
+[chroot]
+# Manjaro's stable-branch mirror -- NOT Arch's own mirror, deliberately:
+# Manjaro holds packages back ~2-4 weeks from Arch's extra for stability, so
+# building against vanilla Arch here would produce packages newer than
+# what's actually on the real workstation. Pick a closer mirror from
+# https://repo.manjaro.org if this one is slow.
+mirror  = "https://mirrors2.manjaro.org/stable/$repo/$arch"
+keyring = "manjaro-keyring"

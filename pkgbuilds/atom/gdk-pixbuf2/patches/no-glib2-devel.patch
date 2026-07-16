@@ -1,0 +1,10 @@
+--- a/PKGBUILD	2026-07-14 13:10:17.837718405 +0000
++++ b/PKGBUILD	2026-07-14 13:10:17.837718405 +0000
+@@ -23,7 +23,6 @@
+ makedepends=(
+   gi-docgen
+   git
+-  glib2-devel
+   gobject-introspection
+   meson
+   python-docutils

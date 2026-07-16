@@ -1,0 +1,19 @@
+# Arch registry entry: "btver1" — AMD C-60 (Bobcat core), x86_64.
+# Builds run natively on the x86_64 host — no personality wrapping needed.
+
+name      = "btver1"
+
+base      = "x86_64"
+toolchain = "devtools"
+
+cflags    = "-march=btver1 -mtune=btver1 -O2 -pipe"
+
+# Package groups this arch builds (see config/groups/<name>.toml).
+# "encoders" enabled 2026-07-15: confirmed real usage on the actual machine
+# (x264/x265 genuinely installed, not just pulled in transitively).
+groups    = ["essentials", "essentials-btver1", "encoders"]
+
+[chroot]
+# Standard Arch mirror; the container's own /etc/pacman.d/mirrorlist is reused if left blank.
+mirror  = "https://geo.mirror.pkgbuild.com/$repo/os/$arch"
+keyring = "archlinux-keyring"

@@ -1,0 +1,14 @@
+# Daily build sweep per arch. Enable one instance per configured arch, e.g.
+#   systemctl enable --now pkgmirror-build@atom.timer
+#   systemctl enable --now pkgmirror-build@btver1.timer
+[Unit]
+Description=Daily pkgmirror build sweep for arch %i
+
+[Timer]
+OnCalendar=daily
+# Spread load and survive downtime.
+RandomizedDelaySec=1h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,59 @@
+--- a/PKGBUILD	2026-07-14 13:10:56.814280577 +0000
++++ b/PKGBUILD	2026-07-14 13:10:56.824280550 +0000
+@@ -5,7 +5,6 @@
+ pkgname=(
+   harfbuzz
+   harfbuzz-cairo
+-  harfbuzz-icu
+   harfbuzz-utils
+   harfbuzz-docs
+ )
+@@ -24,7 +23,6 @@
+   gobject-introspection
+   graphite
+   gtk-doc
+-  icu
+   meson
+   python
+   ragel
+@@ -49,6 +47,10 @@
+ build() {
+   local meson_options=(
+     -D graphite2=enabled
++    # pkgmirror: archlinux32's harfbuzz (7.1.0) predates the libicu this chroot
++    # ships; hb-icu.cc no longer compiles against it. Core shaping doesn't need
++    # ICU -- only the (dropped, see pkgname above) harfbuzz-icu subpackage did.
++    -D icu=disabled
+   )
+   # Harfbuzz wants no exceptions
+   CFLAGS="${CFLAGS/-fexceptions/}"
+@@ -92,10 +94,6 @@
+     _pick hb-cairo usr/lib/pkgconfig/harfbuzz-cairo.pc
+     _pick hb-cairo usr/include/harfbuzz/hb-cairo.h
+ 
+-    _pick hb-icu usr/lib/libharfbuzz-icu*
+-    _pick hb-icu usr/lib/pkgconfig/harfbuzz-icu.pc
+-    _pick hb-icu usr/include/harfbuzz/hb-icu.h
+-
+     _pick hb-utils usr/bin
+ 
+     _pick hb-docs usr/share/gtk-doc
+@@ -117,18 +115,6 @@
+   install -Dt "$pkgdir/usr/share/licenses/$pkgname" -m644 harfbuzz/COPYING
+ }
+ 
+-package_harfbuzz-icu() {
+-  pkgdesc+=" - ICU integration"
+-  depends=(
+-    libharfbuzz.so
+-    libicuuc.so
+-  )
+-  provides=(libharfbuzz-icu.so)
+-
+-  mv hb-icu/* "$pkgdir"
+-
+-  install -Dt "$pkgdir/usr/share/licenses/$pkgname" -m644 harfbuzz/COPYING
+-}
+ 
+ package_harfbuzz-utils() {
+   pkgdesc+=" - Utilities"

@@ -1,0 +1,29 @@
+--- a/PKGBUILD
++++ b/PKGBUILD
+@@ -21,7 +21,6 @@
+   python-build
+   python-installer
+   python-setuptools
+-  python-strictyaml
+   python-wheel
+ )
+ checkdepends=(
+@@ -109,8 +108,6 @@
+ build() {
+   cd meson
+   python -m build --wheel --no-isolation
+-  ./meson.py setup docs docs.build --prefix /usr -D html=false
+-  ./meson.py compile -C docs.build
+ }
+ 
+ check() (
+@@ -123,9 +120,6 @@
+   cd meson
+   python -m installer --destdir="$pkgdir" dist/*.whl
+ 
+-  ./meson.py install -C docs.build --destdir "$pkgdir"
+-  install -Dm644 docs.build/reference_manual.json -t "$pkgdir/usr/share/doc/$pkgname"
+-
+   install -d "$pkgdir/usr/share/vim/vimfiles"
+   cp -rt "$pkgdir/usr/share/vim/vimfiles" data/syntax-highlighting/vim/*/
+ 

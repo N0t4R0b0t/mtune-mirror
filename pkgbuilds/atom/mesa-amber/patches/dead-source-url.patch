@@ -1,0 +1,11 @@
+--- a/PKGBUILD	2026-07-14 14:26:06.896073489 +0000
++++ b/PKGBUILD	2026-07-14 14:26:06.899406814 +0000
+@@ -31,7 +31,7 @@
+   'zstd'
+ )
+ source=(
+-  https://mesa.freedesktop.org/archive/mesa-${pkgver}.tar.xz{,.sig}
++  https://archive.mesa3d.org/older-versions/21.x/mesa-${pkgver}.tar.xz{,.sig}
+   LICENSE
+ )
+ sha256sums=('91fe6f20339884e37a7c47bfba42fb1cd397512c9ed5ad423de369f047cd8b5c'

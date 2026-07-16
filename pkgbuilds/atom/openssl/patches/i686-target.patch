@@ -1,0 +1,17 @@
+--- a/PKGBUILD	2026-07-14 11:58:56.182666646 +0000
++++ b/PKGBUILD	2026-07-14 12:12:09.518061129 +0000
+@@ -31,8 +31,13 @@
+ build() {
+ 	cd "$srcdir/$pkgname-$pkgver"
+ 
++	# pkgmirror: OpenSSL names its i686 target linux-x86 (CARCH gives "i686", not
++	# "linux-i686", which Configure does not recognize); enable-ec_nistp_64_gcc_128
++	# needs a 64-bit __int128 multiply, unavailable on i686.
++	local osslarch="linux-${CARCH}" osslextra="enable-ec_nistp_64_gcc_128"
++	[ "$CARCH" = i686 ] && { osslarch="linux-x86"; osslextra=""; }
+ 	./Configure --prefix=/usr --openssldir=/etc/ssl --libdir=lib \
+-		shared enable-ktls enable-ec_nistp_64_gcc_128 linux-${CARCH}
++		shared enable-ktls $osslextra $osslarch
+ 
+ 	make depend
+ 	make

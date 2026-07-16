@@ -1,0 +1,19 @@
+--- a/PKGBUILD	2026-07-16 02:04:08.893183234 -0400
++++ b/PKGBUILD	2026-07-16 02:04:08.893183234 -0400
+@@ -28,7 +28,6 @@
+   gnutls
+   gsm
+   harfbuzz
+-  jack
+   lame
+   lcms2
+   libass
+@@ -165,7 +164,7 @@
+     --enable-libgsm \
+     --enable-libharfbuzz \
+     --enable-libiec61883 \
+-    --enable-libjack \
++    --disable-libjack \
+     --enable-libjxl \
+     --enable-libmodplug \
+     --enable-libmp3lame \

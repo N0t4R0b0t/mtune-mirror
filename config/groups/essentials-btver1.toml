@@ -1,0 +1,35 @@
+# Package group: "essentials-btver1" — tuning targets specific to the AMD C-60
+# machine (Acer Aspire 725: Radeon HD 6290, XFCE desktop, Kodi/VLC media center).
+# Enabled only on the "btver1" arch. Derived from an inspection of the actual box
+# (2026-07-15: pacman -Q showed Kodi, VLC with its full plugin set, x264/x265,
+# and the AV1 stack (dav1d/aom/rav1e) genuinely installed and in real use).
+#
+# Rationale per package:
+#   mesa       Radeon HD 6290 is TeraScale 2 (pre-GCN) -- driven by the classic
+#              `r600` Gallium driver, NOT radeonsi (GCN+ only). Current/regular
+#              mesa (unlike the Atom's GMA950, which needs mesa-amber) has full
+#              r600 support, so no legacy fork needed here.
+#   ffmpeg     H.264/VP8-9/etc decode; native x86_64 build, none of the
+#              i686/archlinux32 issues that moved this out of shared essentials.
+#   dav1d/aom/rav1e   AV1 codecs. This 2011-era Bobcat APU has zero hardware AV1
+#              decode, so any AV1 content in Kodi/VLC runs full software decode
+#              on a weak dual-core -- a real CPU-bound hot loop. Same caveat as
+#              the "encoders" group: heavily hand-asm + runtime-dispatched, so
+#              -march mainly helps the C/glue paths, not the hot asm kernels --
+#              real benefit, not dramatic.
+#
+# Not included: kodi/vlc themselves (mostly UI/binding code around the codec
+# libs above, where the actual leverage concentrates -- same "shared library,
+# not leaf app" criterion as essentials.toml); pipewire/pulseaudio (mostly
+# I/O-bound, reconsider only if audio glitches become an actual problem).
+
+name        = "essentials-btver1"
+description = "AMD C-60 machine-specific tuning (modern mesa, media center codecs)"
+
+packages = [
+  "mesa",
+  "ffmpeg",
+  "dav1d",
+  "aom",
+  "rav1e",
+]

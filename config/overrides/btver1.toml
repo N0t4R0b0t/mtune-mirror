@@ -1,0 +1,34 @@
+[[override]]
+  name = 'moonlight-qt'
+  notes = 'AUR PKGBUILD has no makedepends; libplacebo (pulled in via ffmpeg) needs vulkan/vulkan.h at compile time'
+  patches = ['vulkan-headers.patch']
+
+[[override]]
+  mem_per_job_mb = 900
+  name = 'linux-btver1'
+  notes = 'kernel C TUs run leaner than the fleet default; unlocks full nproc (mirrors the linux-atom override)'
+
+[[override]]
+  name = 'libdrm'
+  notes = 'test programs link against cairo (checkdepends only, not a makedepend, and we always build with --nocheck anyway); same fix as atom libdrm override'
+  patches = ['no-test-progs.patch']
+
+[[override]]
+  name = 'dav1d'
+  notes = 'doxygen/graphviz doc generation fails (dot exit 9), not needed for a codec library, dropped'
+  patches = ['no-docs.patch']
+
+[[override]]
+  name = 'mesa'
+  notes = 'scoped gallium/vulkan-drivers to AMD-only (r600 for the actual TeraScale 2 GPU + swrast fallback); fixes vtn_bindgen2 SIGSEGV generating imagination (PowerVR) shader code we never use, also cuts build time'
+  patches = ['amd-only-drivers.patch']
+
+[[override]]
+  name = 'ffmpeg'
+  notes = 'JACK audio-server capture support (--enable-libjack) is a niche pro-audio input device the machine owner does not use. jack (AUR, not in official repos) was also hitting a real conflict with jack2 when yay tried to update it, and building/maintaining jack locally on this machine is unnecessarily heavy for a feature nobody uses. Drops the jack depends() entry and configure flag; everything else in ffmpeg unaffected.'
+  patches = ['drop-jack.patch']
+
+[[override]]
+  name = 'portaudio'
+  notes = 'jack is only a build-time auto-detected dependency here (pkg-config, no --disable-jack flag exists), not a hard runtime need -- machine owner does not use JACK audio and jack itself was heavy/conflict-prone to maintain (see ffmpeg override). Drops jack from makedepends and the package()-injected runtime depends so JACK support never gets autodetected/linked.'
+  patches = ['drop-jack.patch']

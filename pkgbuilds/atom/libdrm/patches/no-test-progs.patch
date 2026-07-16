@@ -1,0 +1,23 @@
+--- a/PKGBUILD	2026-07-14 13:05:41.295102689 +0000
++++ b/PKGBUILD	2026-07-14 13:27:10.346629251 +0000
+@@ -28,6 +28,10 @@
+ # validpgpkeys=('9DA7C211125935E1D6CED9BD34937756138E7D52') # Samuel Pitoiset <hakzsam@gmail.com>
+ 
+ build() {
++  # pkgmirror: test programs link against cairo (checkdepends only, not a
++  # makedepend, and we always build with --nocheck anyway); arch-meson also
++  # forces --auto-features=enabled, which makes the upstream-optional
++  # cairo-tests "auto" feature required -- our chroot has no cairo dev files.
+   arch-meson $pkgname-$pkgver build \
+     -D udev=true \
+     -D etnaviv=disabled \
+@@ -37,7 +41,8 @@
+     -D exynos=disabled \
+     -D tegra=disabled \
+     -D valgrind=disabled \
+-    -D install-test-programs=true
++    -D install-test-programs=false \
++    -D cairo-tests=disabled
+   meson compile -C build
+ }
+ 

@@ -1,0 +1,25 @@
+# Per-arch build oneshot. Instance name = arch (e.g. pkgmirror-build@atom).
+# Runs the update check then the build sweep for that arch. Concurrency ACROSS
+# arches is allowed (separate instances); WITHIN an arch, bin/*.sh serialize via
+# flock (see common.sh:with_lock).
+[Unit]
+Description=pkgmirror build sweep for arch %i
+After=network-online.target nginx.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=pkgmirror
+Environment=PKGMIRROR_DATA=/srv/pkgmirror
+# So build.sh can advertise its own unit in state/<arch>/current.json, letting
+# the dashboard reattach the live log console to a timer-launched sweep.
+Environment=PKGMIRROR_UNIT=pkgmirror-build@%i.service
+WorkingDirectory=/opt/pkgmirror
+# update-check.sh flags what needs rebuilding; build.sh does the sweep.
+ExecStart=/opt/pkgmirror/bin/update-check.sh %i
+ExecStart=/opt/pkgmirror/bin/build.sh %i
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target
