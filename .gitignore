@@ -1,6 +1,9 @@
 # Claude Code local settings — may contain local paths / infra references
 .claude/
 
+# Personal/private drafts (e.g. LinkedIn posts) — not project docs, never committed
+/docs-private/
+
 # Built Go binary (built in-container by the installer) — `go build` with no -o,
 # or a wrong -o, defaults to a binary named after the module dir (web/web).
 /web/pkgmirror-web

@@ -77,14 +77,23 @@ button {
 button:hover { border-color: var(--accent); }
 button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
 button.danger:hover { border-color: var(--err); color: var(--err); }
-table { width: 100%; border-collapse: collapse; }
-th, td { text-align: left; padding: 8px 18px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+th, td { text-align: left; padding: 8px 18px; border-bottom: 1px solid var(--border); font-size: 13px; overflow: hidden; }
 th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
 td.mono, .mono { font-family: var(--mono); font-size: 12px; }
-td.lastbuild { white-space: nowrap; }
+td.mono { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 td.lastbuild .meta { font-family: var(--mono); font-size: 11px; color: var(--muted); }
 tr:last-child td { border-bottom: none; }
-.rowact { display: flex; gap: 6px; justify-content: flex-end; }
+.rowact { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-start; }
+.pkgname { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; overflow-wrap: anywhere; }
+col.col-pkg { width: 16%; }
+col.col-origin { width: 13%; }
+col.col-source { width: 10%; }
+col.col-repo { width: 10%; }
+col.col-pkgbuild { width: 9%; }
+col.col-lastbuild { width: 18%; }
+col.col-actions { width: 24%; }
 .addform { display: flex; gap: 8px; padding: 12px 18px; align-items: center; flex-wrap: wrap; border-top: 1px solid var(--border); background: var(--code-bg); }
 input, select { font: inherit; font-size: 13px; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel); color: var(--text); }
 input[type=text] { width: 180px; }

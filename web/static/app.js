@@ -362,10 +362,16 @@ function archSection(a) {
         <button onclick="updateCheck('${esc(a.name)}')">Update-check</button>
       </div>
     </div>
+    <div class="table-wrap">
     <table>
+      <colgroup>
+        <col class="col-pkg"><col class="col-origin"><col class="col-source"><col class="col-repo">
+        <col class="col-pkgbuild"><col class="col-lastbuild"><col class="col-actions">
+      </colgroup>
       <thead><tr><th>Package</th><th>Origin</th><th>Source</th><th>Repo</th><th>PKGBUILD</th><th>Last build</th><th></th></tr></thead>
       <tbody id="tb-${esc(a.name)}"></tbody>
     </table>
+    </div>
     <div class="addform">
       <input type="text" id="add-${esc(a.name)}" class="pkg-typeahead" placeholder="extra package name"
              autocomplete="off" oninput="onPkgTypeahead(this)" onkeydown="onPkgTypeaheadKey(event,this)"
@@ -406,19 +412,19 @@ function fillPackages(data) {
 }
 function pkgRow(arch, p) {
   const due = p.due ? '<span class="badge warn">DUE</span>' : '<span class="badge ok">ok</span>';
-  const src = p.local ? (p.source_version || "—") : `(${p.source || "upstream"})`;
+  const src = p.local ? (p.source_version || "—") : (p.source || "upstream");
   const editBtn = p.local ? `<button onclick="editPkgbuild('${arch}','${p.name}')">Edit</button>` : "";
   const ovBadge = p.has_override
     ? `<span class="badge accent" title="${esc(p.override_summary || '')}"
          onclick="openOverrideModal('${arch}','${p.name}')">🔧 override</span>` : "";
   return `<tr>
-    <td>${esc(p.name)} ${due} ${ovBadge}</td>
-    <td class="mono">${esc(p.origin || "")}</td>
+    <td><div class="pkgname">${esc(p.name)} ${due} ${ovBadge}</div></td>
+    <td class="mono" title="${esc(p.origin || '')}">${esc(p.origin || "")}</td>
     <td>${p.source === "git" && p.git_url
       ? `<span class="mono" title="${esc(p.git_url)}${p.git_ref ? ' @ ' + esc(p.git_ref) : ''}">git</span>`
       : esc(p.source)}</td>
-    <td class="mono">${esc(p.repo_version || "—")}</td>
-    <td class="mono">${esc(src)}</td>
+    <td class="mono" title="${esc(p.repo_version || '')}">${esc(p.repo_version || "—")}</td>
+    <td class="mono" title="${esc(src)}">${esc(src)}</td>
     <td class="lastbuild">${lastBuildCell(p)}</td>
     <td><div class="rowact">
       <button onclick="openPkgModal('${arch}','${p.name}')">Details</button>
@@ -883,7 +889,19 @@ function showTypeahead(input, results) {
 }
 function selectTypeahead(i) {
   if (!taInput || !taItems[i]) return;
-  taInput.value = taItems[i].name;
+  const item = taItems[i];
+  taInput.value = item.name;
+  // The "extra package" form (id `add-<arch>`) has a paired source <select>
+  // (id `src-<arch>`) — sync it to what was actually picked so an AUR result
+  // doesn't silently get added as source=upstream (the select's default).
+  if (taInput.id.startsWith("add-")) {
+    const arch = taInput.id.slice(4);
+    const srcSel = $("src-" + arch);
+    if (srcSel) {
+      srcSel.value = item.repo === "aur" ? "aur" : "upstream";
+      onSrcChange(arch);
+    }
+  }
   closeTypeahead();
   taInput.focus();
 }
