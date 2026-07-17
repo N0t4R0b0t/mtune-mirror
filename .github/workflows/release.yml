@@ -66,6 +66,13 @@ jobs:
             echo "R2_* secrets not set — skipping prebuilt-binary upload (release still proceeds without it)."
             exit 0
           fi
+          # Force path-style addressing (s3://endpoint/bucket/key, not
+          # bucket.endpoint/key) — the AWS CLI's default virtual-hosted-style
+          # addressing produces a hostname like <bucket>.<account>.r2.cloudflarestorage.com,
+          # which R2's cert (only *.r2.cloudflarestorage.com, one level) doesn't cover,
+          # so the TLS handshake fails (SSLV3_ALERT_HANDSHAKE_FAILURE) before auth
+          # is ever checked. Path-style keeps the hostname to the account subdomain only.
+          aws configure set default.s3.addressing_style path
           for f in pkgmirror-web-*.tar.gz pkgmirror-web-*.tar.gz.sha256; do
             aws s3 cp "$f" "s3://${R2_BUCKET}/pkgmirror/${GITHUB_REF_NAME}/$f" \
               --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
