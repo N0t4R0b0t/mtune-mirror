@@ -75,29 +75,6 @@ jobs:
             echo "R2_* secrets not set — skipping prebuilt-binary upload (release still proceeds without it)."
             exit 0
           fi
-          # --- TEMPORARY diagnostic (format/length only, never prints values) ---
-          # for a repeated TLS-handshake failure that survived both a path-style-
-          # addressing fix and a checksum-trailer fix, to rule in/out a malformed
-          # secret (e.g. a trailing newline from how it was piped into `gh secret
-          # set`, which would corrupt the endpoint URL/SNI hostname).
-          check_clean() {
-            local name="$1" val="$2" pattern="$3"
-            local len; len=$(printf '%s' "$val" | wc -c)
-            if printf '%s' "$val" | grep -qE "$pattern"; then
-              echo "$name: format OK, len=$len"
-            else
-              echo "$name: format UNEXPECTED, len=$len (expected pattern: $pattern)"
-            fi
-            if [ "$(printf '%s' "$val" | od -An -c | tr -d ' \n' | grep -oE '(\\n|\\r|\\t)+$')" != "" ]; then
-              echo "$name: has trailing whitespace/newline/tab characters!"
-            fi
-          }
-          check_clean "R2_ACCOUNT_ID" "$R2_ACCOUNT_ID" '^[0-9a-f]{32}$'
-          check_clean "R2_BUCKET" "$R2_BUCKET" '^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$'
-          check_clean "AWS_ACCESS_KEY_ID" "$AWS_ACCESS_KEY_ID" '^[A-Za-z0-9]{16,}$'
-          check_clean "AWS_SECRET_ACCESS_KEY" "$AWS_SECRET_ACCESS_KEY" '^[A-Za-z0-9+/=]{16,}$'
-          echo "computed endpoint: https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com (len=$(printf '%s' "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" | wc -c))"
-          # --- end diagnostic ---
           # Force path-style addressing (s3://endpoint/bucket/key, not
           # bucket.endpoint/key) — the AWS CLI's default virtual-hosted-style
           # addressing produces a hostname like <bucket>.<account>.r2.cloudflarestorage.com,
