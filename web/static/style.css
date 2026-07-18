@@ -11,10 +11,16 @@
   }
 }
 * { box-sizing: border-box; }
+html, body { height: 100%; }
 body {
   margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5;
+  min-height: 100vh; display: flex; flex-direction: column;
 }
+/* #view is `main`, the router-swapped content between header and footer --
+   flex: 1 makes it absorb any leftover height so the footer always sits at
+   the viewport bottom instead of riding up under short pages (e.g. Help). */
+#view { flex: 1; }
 header {
   display: flex; align-items: center; gap: 16px; padding: 14px 22px;
   border-bottom: 1px solid var(--border); background: var(--panel); position: sticky; top: 0; z-index: 5;
