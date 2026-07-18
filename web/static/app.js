@@ -114,6 +114,7 @@ function renderHeader(data) {
   $("paused-badge").style.display = data.paused ? "" : "none";
   $("pause-btn").textContent = data.paused ? "Resume" : "Pause";
   $("pause-btn").className = data.paused ? "primary" : "";
+  if (data.version) $("footer-version").textContent = `pkgmirror ${data.version}`;
 }
 function renderStats(data) {
   const d = data.disk || {};
@@ -968,5 +969,6 @@ function helpHTML(data) {
 }
 
 // ---- boot ------------------------------------------------------------------
+$("footer-year").textContent = new Date().getFullYear();
 route();
 poll();

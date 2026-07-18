@@ -35,6 +35,11 @@ import (
 //go:embed static
 var staticFS embed.FS
 
+// appVersion is bumped by hand alongside each git tag (see README's release
+// process) -- this project has no CI-driven ldflags version injection, so
+// this constant is the single source of truth the UI's footer reads from.
+const appVersion = "v1.1.1"
+
 var (
 	root    = env("PKGMIRROR_ROOT", "/opt/pkgmirror")
 	data    = env("PKGMIRROR_DATA", "/srv/pkgmirror")
@@ -466,6 +471,7 @@ func hStatus(w http.ResponseWriter, r *http.Request) {
 		CPUPct      int             `json:"cpuPct"`
 		Mem         memInfo         `json:"mem"`
 		ChrootTmpfs []archTmpfsInfo `json:"chrootTmpfs"`
+		Version     string          `json:"version"`
 		Now         int64           `json:"now"`
 	}
 	var res resp
@@ -518,6 +524,7 @@ func hStatus(w http.ResponseWriter, r *http.Request) {
 	res.CPUPct = cpuUsage()
 	res.Mem = memUsage()
 	res.ChrootTmpfs = chrootTmpfsUsage(archList)
+	res.Version = appVersion
 	writeJSON(w, res)
 }
 

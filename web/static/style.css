@@ -21,6 +21,14 @@ header {
 }
 header h1 { font-size: 18px; margin: 0; letter-spacing: .3px; }
 header .stats { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#app-footer {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 18px 22px; margin-top: 24px; border-top: 1px solid var(--border);
+  color: var(--muted); font-size: 12px;
+}
+#app-footer a { color: var(--muted); text-decoration: none; }
+#app-footer a:hover { color: var(--accent); text-decoration: underline; }
+#app-footer .dot { opacity: .5; }
 .burger {
   font-size: 18px; line-height: 1; padding: 6px 11px; border-radius: 6px;
   background: var(--panel); color: var(--text);
