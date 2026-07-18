@@ -161,10 +161,13 @@ log "Building pkgmirror-web"
 
 # --- 5. systemd units -------------------------------------------------------
 log "Installing systemd units"
-install -m0644 "$REPO_ROOT"/systemd/pkgmirror-build@.service /etc/systemd/system/
-install -m0644 "$REPO_ROOT"/systemd/pkgmirror-build@.timer   /etc/systemd/system/
-install -m0644 "$REPO_ROOT"/systemd/pkgmirror-web.service    /etc/systemd/system/
+install -m0644 "$REPO_ROOT"/systemd/pkgmirror-build@.service          /etc/systemd/system/
+install -m0644 "$REPO_ROOT"/systemd/pkgmirror-build@.timer            /etc/systemd/system/
+install -m0644 "$REPO_ROOT"/systemd/pkgmirror-web.service             /etc/systemd/system/
+install -m0644 "$REPO_ROOT"/systemd/pkgmirror-clean-chroots.service   /etc/systemd/system/
+install -m0644 "$REPO_ROOT"/systemd/pkgmirror-clean-chroots.timer     /etc/systemd/system/
 systemctl daemon-reload
+systemctl enable --now pkgmirror-clean-chroots.timer
 # `enable --now` only starts a not-yet-running unit; on an update run the
 # service is already active, so a freshly rebuilt binary above would never
 # actually get loaded without an explicit restart.

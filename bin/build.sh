@@ -347,6 +347,11 @@ run_build() {
   local names=(); local n
   while IFS= read -r n; do [ -n "$n" ] && names+=("$n"); done < <(selected_names)
   [ "${#names[@]}" -gt 0 ] || { warn "no packages selected for '$arch'"; return 0; }
+
+  # Reclaim any idle chroot copies this arch left dirty from an earlier
+  # failure (see bin/clean-chroots.sh) before this sweep needs the headroom.
+  "$PKGMIRROR_ROOT/bin/clean-chroots.sh" "$arch" || true
+
   sync_chroot_db
 
   # concurrency: min(configured, #packages); split make -j across jobs.
@@ -449,6 +454,12 @@ run_build() {
   log "build summary [$arch]: ${#ok[@]} ok, ${#failed[@]} failed"
   [ "${#ok[@]}"     -gt 0 ] && log "  ok:     ${ok[*]}"
   [ "${#failed[@]}" -gt 0 ] && warn "  failed: ${failed[*]}"
+
+  # Reclaim whatever this sweep itself left dirty -- most valuable after a
+  # failure, since that copy would otherwise sit full until this arch's next
+  # sweep reuses it (see bin/clean-chroots.sh).
+  "$PKGMIRROR_ROOT/bin/clean-chroots.sh" "$arch" || true
+
   [ "${#failed[@]}" -eq 0 ]
 }
 

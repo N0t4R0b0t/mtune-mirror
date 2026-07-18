@@ -17,3 +17,9 @@ groups    = ["essentials", "essentials-btver1", "encoders"]
 # Standard Arch mirror; the container's own /etc/pacman.d/mirrorlist is reused if left blank.
 mirror  = "https://geo.mirror.pkgbuild.com/$repo/os/$arch"
 keyring = "archlinux-keyring"
+# linux-btver1's unstripped vmlinux link step hit "No space left on device"
+# at the default 10G (2026-07-18, after ruling out OOM -- see
+# bin/clean-chroots.sh). 13G leaves real margin over the observed failure
+# point without eating so much of the container's 16G that a concurrent
+# build risks an OOM instead of this arch's own ENOSPC.
+build_tmpfs_gb = 13

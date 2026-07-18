@@ -273,17 +273,23 @@ fi
 # disk -- it must survive container reboots without a full re-bootstrap.
 copy_dir="$(dirname "$chroot_root")/pkgmirror"
 if ! mountpoint -q "$copy_dir" 2>/dev/null; then
-  log "Mounting tmpfs at $copy_dir for build scratch space"
+  # Default 10G: 8G genuinely wasn't enough for a full mesa build (many
+  # gallium/vulkan driver .so targets + debug symbols) or an unstripped
+  # kernel build (vmlinux.unstripped link step) -- both hit "No space left
+  # on device" at 8G on real builds (2026-07-15). 10G itself then turned out
+  # insufficient for linux-btver1's specific kernel config (2026-07-18) --
+  # optional per-arch chroot.build_tmpfs_gb overrides the default for an
+  # arch that needs more, without growing every other arch's cap too (each
+  # arch's tmpfs draws from the same container RAM pool, all summed against
+  # container-setup.sh's matching $DATA_ROOT/work tmpfs -- oversize this
+  # without real headroom and you trade an ENOSPC for an OOM instead).
+  tmpfs_gb="$(toml_get "$conf" chroot.build_tmpfs_gb)"
+  case "$tmpfs_gb" in ''|*[!0-9]*) tmpfs_gb=10 ;; esac
+  log "Mounting tmpfs at $copy_dir for build scratch space (${tmpfs_gb}G)"
   install -d "$copy_dir"
-  # 10G: 8G genuinely wasn't enough -- both a full mesa build (many gallium/
-  # vulkan driver .so targets + debug symbols) and an unstripped kernel build
-  # (vmlinux.unstripped link step) hit "No space left on device" at 8G on
-  # real builds (2026-07-15). Keep an eye on total container RAM if adding
-  # more arches -- each gets its own tmpfs of this size, all sharing the same
-  # physical RAM pool (see container-setup.sh's matching $DATA_ROOT/work tmpfs).
-  mount -t tmpfs -o size=10G,mode=0755 tmpfs "$copy_dir"
+  mount -t tmpfs -o "size=${tmpfs_gb}G,mode=0755" tmpfs "$copy_dir"
   grep -q "^tmpfs $copy_dir " /etc/fstab 2>/dev/null || \
-    echo "tmpfs $copy_dir tmpfs defaults,size=10G,mode=0755 0 0" >> /etc/fstab
+    echo "tmpfs $copy_dir tmpfs defaults,size=${tmpfs_gb}G,mode=0755 0 0" >> /etc/fstab
 fi
 
 touch "$ready_marker"

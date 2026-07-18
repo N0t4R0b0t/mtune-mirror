@@ -130,11 +130,19 @@ function renderStats(data) {
     const cls = m.pct >= 90 ? "err" : m.pct >= 75 ? "warn" : "";
     pills.push(pill("RAM", `${m.used} / ${m.total} (${m.pct}%) · ${m.avail} free`, cls));
   }
+  const ct = data.chrootTmpfs || [];
+  if (ct.length) {
+    const worst = ct.reduce((a, b) => (b.pct > a.pct ? b : a));
+    const cls = worst.pct >= 90 ? "err" : worst.pct >= 75 ? "warn" : "";
+    const title = ct.map((c) => `${c.arch}: ${c.used} / ${c.size} (${c.pct}%) · ${c.avail} free`).join("\n");
+    pills.push(pill("Chroot tmpfs", `${worst.arch} ${worst.pct}% · ${worst.avail} free`, cls, title));
+  }
   pills.push(pill("Builds", String(builds), builds ? "on" : ""));
   $("stats").innerHTML = pills.join("");
 }
-function pill(label, value, cls) {
-  return `<span class="pill ${cls || ""}"><span class="k">${label}</span>${value}</span>`;
+function pill(label, value, cls, title) {
+  const t = title ? ` title="${esc(title)}"` : "";
+  return `<span class="pill ${cls || ""}"${t}><span class="k">${label}</span>${value}</span>`;
 }
 
 // ---- router ----------------------------------------------------------------

@@ -458,14 +458,15 @@ func groupsAll() []groupInfo {
 
 func hStatus(w http.ResponseWriter, r *http.Request) {
 	type resp struct {
-		Arches  []archInfo  `json:"arches"`
-		Groups  []groupInfo `json:"groups"`
-		Paused  bool        `json:"paused"`
-		Running []string    `json:"running"`
-		Disk    diskInfo    `json:"disk"`
-		CPUPct  int         `json:"cpuPct"`
-		Mem     memInfo     `json:"mem"`
-		Now     int64       `json:"now"`
+		Arches      []archInfo      `json:"arches"`
+		Groups      []groupInfo     `json:"groups"`
+		Paused      bool            `json:"paused"`
+		Running     []string        `json:"running"`
+		Disk        diskInfo        `json:"disk"`
+		CPUPct      int             `json:"cpuPct"`
+		Mem         memInfo         `json:"mem"`
+		ChrootTmpfs []archTmpfsInfo `json:"chrootTmpfs"`
+		Now         int64           `json:"now"`
 	}
 	var res resp
 	res.Now = time.Now().Unix()
@@ -516,6 +517,7 @@ func hStatus(w http.ResponseWriter, r *http.Request) {
 	res.Disk = diskUsage(data)
 	res.CPUPct = cpuUsage()
 	res.Mem = memUsage()
+	res.ChrootTmpfs = chrootTmpfsUsage(archList)
 	writeJSON(w, res)
 }
 
@@ -595,6 +597,32 @@ func diskUsage(path string) diskInfo {
 	di.Size, di.Used, di.Avail = f[0], f[1], f[2]
 	di.Pct, _ = strconv.Atoi(strings.TrimSuffix(f[3], "%"))
 	return di
+}
+
+// archTmpfsInfo is one arch's build-copy tmpfs usage.
+type archTmpfsInfo struct {
+	Arch string `json:"arch"`
+	diskInfo
+}
+
+// chrootTmpfsUsage returns each arch's build-copy tmpfs usage (see
+// installer/bootstrap-chroot.sh's chroots/<arch>/pkgmirror mount) -- the
+// resource that caused a real container-wide OOM (2026-07-18, linux-btver1):
+// makechrootpkg's -c cleans a copy right before its NEXT use, so a copy left
+// dirty by a failure sits full, unreclaimed, until then. bin/clean-chroots.sh
+// now reclaims it explicitly (at every sweep's start/end and on a timer);
+// this surfaces the same numbers so an operator can see it building up
+// between reclaims, not just after the fact in a build log.
+func chrootTmpfsUsage(archList []string) []archTmpfsInfo {
+	out := make([]archTmpfsInfo, 0, len(archList))
+	for _, a := range archList {
+		di := diskUsage(filepath.Join(data, "chroots", a, "pkgmirror"))
+		if di.Size == "" {
+			continue // not bootstrapped yet -- the tmpfs doesn't exist
+		}
+		out = append(out, archTmpfsInfo{Arch: a, diskInfo: di})
+	}
+	return out
 }
 
 // cpuUsage returns busy CPU percent (0-100) for the container, measured as the

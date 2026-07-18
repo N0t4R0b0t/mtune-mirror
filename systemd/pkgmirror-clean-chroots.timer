@@ -1,0 +1,15 @@
+# Backstop sweep across every arch's chroot copies -- build.sh's own
+# start/end hooks (bin/build.sh's run_build) cover the common case; this
+# catches anything they don't (a manual build outside a scheduled sweep,
+# a copy left dirty by a hard crash that skipped build.sh's own cleanup call).
+[Unit]
+Description=Periodic pkgmirror chroot-copy cleanup
+
+[Timer]
+OnCalendar=*-*-* 0/4:00:00
+# Spread load and survive downtime.
+RandomizedDelaySec=20m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

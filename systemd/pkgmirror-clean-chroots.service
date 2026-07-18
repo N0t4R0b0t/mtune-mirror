@@ -1,0 +1,17 @@
+# Periodic backstop for bin/clean-chroots.sh. build.sh already calls it at the
+# start and end of every sweep (see bin/build.sh's run_build), so this mostly
+# covers arches that haven't run a sweep recently -- a chroot copy dirtied by
+# a manual/ad-hoc build (dashboard "Build" button, not a scheduled sweep) has
+# no other trigger to reclaim it until this fires.
+[Unit]
+Description=pkgmirror chroot-copy cleanup (reclaim idle build copies, all arches)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=pkgmirror
+Environment=PKGMIRROR_DATA=/srv/pkgmirror
+WorkingDirectory=/opt/pkgmirror
+ExecStart=/opt/pkgmirror/bin/clean-chroots.sh
+Nice=10
+IOSchedulingClass=idle
