@@ -81,9 +81,16 @@ if [ -n "${REPO_SRC:-}" ]; then
 else
   HOST_REPO="$(mktemp -d)"
   trap 'rm -rf "$HOST_REPO"' EXIT
-  msg "Cloning $REPO_URL ($REPO_REF) to host"
-  git clone --depth 1 --branch "$REPO_REF" "$REPO_URL" "$HOST_REPO" 2>/dev/null \
-    || fail "clone failed — set REPO_URL/REPO_REF, or pass REPO_SRC=<local checkout>"
+  msg "Fetching $REPO_URL ($REPO_REF) to host"
+  # Proxmox hosts are bare hypervisors -- don't require `git` on them just to
+  # provision a container that already has its own git inside. codeload's
+  # tarball endpoint works for branches, tags, or commit SHAs alike and needs
+  # nothing beyond curl/tar, both already mandatory (curl bootstraps this
+  # script itself).
+  repo_slug="${REPO_URL#https://github.com/}"; repo_slug="${repo_slug%.git}"
+  curl -fsSL "https://codeload.github.com/$repo_slug/tar.gz/$REPO_REF" \
+    | tar -xzf - -C "$HOST_REPO" --strip-components=1 \
+    || fail "download failed — set REPO_URL/REPO_REF, or pass REPO_SRC=<local checkout>"
 fi
 # shellcheck source=installer/create-lxc.sh
 source "$HOST_REPO/installer/create-lxc.sh"
