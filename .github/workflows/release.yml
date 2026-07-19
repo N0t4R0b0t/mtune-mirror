@@ -32,7 +32,7 @@ jobs:
           CGO_ENABLED: '0'
           GOOS: linux
           GOARCH: amd64
-        run: go build -trimpath -ldflags="-s -w" -o pkgmirror-web .
+        run: go build -trimpath -ldflags="-s -w -X main.appVersion=${GITHUB_REF_NAME}" -o pkgmirror-web .
       - name: package
         run: |
           tag="${GITHUB_REF_NAME}"

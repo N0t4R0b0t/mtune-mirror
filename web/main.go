@@ -35,10 +35,15 @@ import (
 //go:embed static
 var staticFS embed.FS
 
-// appVersion is bumped by hand alongside each git tag (see README's release
-// process) -- this project has no CI-driven ldflags version injection, so
-// this constant is the single source of truth the UI's footer reads from.
-const appVersion = "v1.2.0"
+// appVersion is set at build time via -ldflags "-X main.appVersion=...":
+// release.yml injects the pushed tag (e.g. "v1.2.0") for the binary it
+// publishes; container-setup.sh's own `go build` (the common path -- most
+// deployments never touch a release binary, see its comment) injects a UTC
+// build timestamp instead, since that build has no git tag context available
+// (install.sh fetches a plain codeload tarball, no .git). This default is
+// only what a bare `go build .` with no ldflags produces (e.g. a developer
+// running the binary directly for local testing).
+var appVersion = "dev"
 
 var (
 	root    = env("PKGMIRROR_ROOT", "/opt/pkgmirror")

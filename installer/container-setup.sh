@@ -162,7 +162,14 @@ chmod +x /etc/profile.d/00_pkgmirror-details.sh
 # native config reads in internal/pkgconfig — needs network access at build
 # time to resolve/download it; was previously stdlib-only) -----------------
 log "Building pkgmirror-web"
-( cd "$REPO_ROOT/web" && GOFLAGS=-mod=mod GOCACHE=/tmp/gocache go build -o /usr/local/bin/pkgmirror-web . ) \
+# No git tag context available here (install.sh fetches a plain codeload
+# tarball, no .git -- see its comment), unlike release.yml's build which
+# injects the actual pushed tag. Stamp a UTC build timestamp instead so the
+# footer at least shows *when* this binary was built, rather than a stale or
+# generic version string.
+build_ts="$(date -u +%Y%m%d%H%M%S)"
+( cd "$REPO_ROOT/web" && GOFLAGS=-mod=mod GOCACHE=/tmp/gocache \
+    go build -ldflags="-X main.appVersion=dev-$build_ts" -o /usr/local/bin/pkgmirror-web . ) \
   || warn "pkgmirror-web build failed — UI will be unavailable"
 
 # --- 5. systemd units -------------------------------------------------------
