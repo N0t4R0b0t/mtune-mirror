@@ -38,7 +38,7 @@ var staticFS embed.FS
 // appVersion is bumped by hand alongside each git tag (see README's release
 // process) -- this project has no CI-driven ldflags version injection, so
 // this constant is the single source of truth the UI's footer reads from.
-const appVersion = "v1.1.2"
+const appVersion = "v1.2.0"
 
 var (
 	root    = env("PKGMIRROR_ROOT", "/opt/pkgmirror")
