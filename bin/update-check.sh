@@ -18,6 +18,12 @@
 # before this tracking existed) or an unreachable remote falls back to the old
 # built/missing verdict rather than risk a false DUE.
 #
+# url packages have no git remote to ls-remote against, so they get their own
+# real check instead: curl just the configured PKGBUILD (bin/lib/common.sh
+# url_remote_version) and diff its pkgver-pkgrel against the repo, same idea
+# as the local-override check above but fetched over HTTP each time rather
+# than read from disk.
+#
 # A package with an explicit build-override pin (bin/override.sh --pin) is
 # intentionally frozen to that version/tag, so upstream moving on doesn't flag
 # it — it shows "pinned" instead of DUE.
@@ -59,13 +65,22 @@ while IFS=$'\t' read -r name src origin; do
   else
     pin="$(pkg_pin "$name")"
     auto_pin=0
-    if [ -z "$pin" ] && [ "$src" != "aur" ] && [ "$src" != "git" ] && is_i686 "$arch"; then
+    if [ -z "$pin" ] && [ "$src" != "aur" ] && [ "$src" != "git" ] && [ "$src" != "url" ] && is_i686 "$arch"; then
       auto_pin=1
     fi
     if [ -n "$pin" ]; then
       want="(pinned: $pin)"; status="pinned"
     elif [ "$auto_pin" -eq 1 ]; then
       want="(i686 auto-pin)"; status="built"
+    elif [ "$src" = "url" ]; then
+      want="$(url_remote_version "$arch" "$name")"
+      if [ -z "$want" ]; then
+        want="(unreachable)"; status="built"
+      elif [ "$have" = "$want" ]; then
+        status="ok"
+      else
+        status="DUE"; due=$((due + 1))
+      fi
     else
       IFS=$'\t' read -r rurl rref < <(upstream_remote_url_ref "$arch" "$name" "$src") || true
       remote_sha=""

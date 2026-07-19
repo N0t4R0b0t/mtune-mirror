@@ -207,6 +207,34 @@ pkg_giturl() {
   done
 }
 
+# pkg_urlspec <arch> <pkg> -> emits "url<TAB>files" for a source=url package
+# entry (files is a comma-joined list of extra filenames fetched alongside
+# PKGBUILD, empty if none), or nothing if <pkg> has no entry or no url set.
+# Used by build.sh resolve_src's source=url branch.
+pkg_urlspec() {
+  local arch="$1" pkg="$2" f; f="$(packages_file "$arch")"
+  [ -f "$f" ] || return 0
+  local n; n="$(toml_get "$f" 'package.all().count()')"
+  [ -n "$n" ] && [ "$n" -gt 0 ] 2>/dev/null || return 0
+  local i=0
+  while [ "$i" -lt "$n" ]; do
+    if [ "$(toml_get "$f" "package.[$i].name")" = "$pkg" ]; then
+      local nf fl="" j
+      nf="$(toml_get "$f" "package.[$i].files.all().count()")"
+      if [ -n "$nf" ] && [ "$nf" -gt 0 ] 2>/dev/null; then
+        j=0
+        while [ "$j" -lt "$nf" ]; do
+          fl="${fl:+$fl,}$(toml_get "$f" "package.[$i].files.[$j]")"
+          j=$((j + 1))
+        done
+      fi
+      printf '%s\t%s\n' "$(toml_get "$f" "package.[$i].url")" "$fl"
+      return 0
+    fi
+    i=$((i + 1))
+  done
+}
+
 # pkg_giturls_all <arch> -> emits "name<TAB>url<TAB>ref" per source=git package
 # entry. One-shot listing for the web UI (avoids one call per package); see
 # pkg_giturl for single-package lookups.
@@ -366,6 +394,10 @@ upstream_remote_url_ref() {
       IFS=$'\t' read -r url ref < <(pkg_giturl "$arch" "$pkg") || true
       printf '%s\t%s\n' "$url" "$ref"
       ;;
+    # url) has no git remote to ls-remote against (it's a plain HTTP fetch, not
+    # a clone) -- emit nothing so the caller falls back to its unreachable/
+    # no-baseline case rather than the wrong default below.
+    url) printf '\t\n' ;;
     *) printf '%s\t%s\n' "https://gitlab.archlinux.org/archlinux/packaging/packages/$pkg.git" "" ;;
   esac
 }
@@ -380,6 +412,25 @@ remote_head_sha() {
   [ -n "$url" ] || return 0
   timeout_s="$(config_get update_check_timeout_sec)"; timeout_s="${timeout_s:-15}"
   timeout "$timeout_s" git ls-remote "$url" "$ref" 2>/dev/null | awk 'NR==1{print $1}'
+}
+
+# url_remote_version <arch> <pkg> -> "[epoch:]pkgver-pkgrel" fetched fresh from
+# a source=url package's configured PKGBUILD, or empty on failure/timeout.
+# source=url has no git remote to ls-remote against (see
+# upstream_remote_url_ref's url case), so this is its equivalent cheap
+# staleness probe: curl just the PKGBUILD (not the full resolve_src fetch —
+# no --files, no build) and read its version, same as a local-override
+# PKGBUILD is read in-place. Bounded by the same update_check_timeout_sec.
+url_remote_version() {
+  local arch="$1" pkg="$2" baseurl="" files="" timeout_s
+  IFS=$'\t' read -r baseurl files < <(pkg_urlspec "$arch" "$pkg") || true
+  [ -n "$baseurl" ] || return 0
+  timeout_s="$(config_get update_check_timeout_sec)"; timeout_s="${timeout_s:-15}"
+  local tmp; tmp="$(mktemp -d)"
+  if timeout "$timeout_s" curl -fsSL -o "$tmp/PKGBUILD" "${baseurl%/}/PKGBUILD" 2>/dev/null; then
+    pkgbuild_version "$tmp"
+  fi
+  rm -rf "$tmp"
 }
 
 # --- version helpers --------------------------------------------------------
