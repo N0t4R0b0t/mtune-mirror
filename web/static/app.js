@@ -741,6 +741,10 @@ async function groupCreate() {
 async function groupAdd(g) {
   const name = $("gadd-" + g).value.trim();
   if (!name) return;
+  if (/^[a-z]+:\/\//i.test(name)) {
+    toast("Groups only tag existing package names, not a source URL. Register the package first via an arch's \"extra package\" form (Source: git (custom repo)), then add it to this group by name.");
+    return;
+  }
   try { await api("POST", `/api/groups/${g}/packages/${name}`); needsFullRender = true; kick(); }
   catch (e) { toast("add failed: " + e.message); }
 }
