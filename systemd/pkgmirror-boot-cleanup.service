@@ -1,0 +1,24 @@
+# Clears build state left behind by a run that was killed before it could
+# clean up after itself. bin/build.sh's own cleanup (clear_current, an EXIT
+# trap) only fires on a graceful exit or a caught signal -- a host reboot, an
+# OOM-kill, or a force-killed chroot build skips it entirely, leaving
+# state/<arch>/current.json and state/<arch>/progress/* on disk claiming a
+# sweep is still running. build.sh already self-heals this the *next* time it
+# runs that arch (it unconditionally clears both before starting), but until
+# then the dashboard shows a phantom "building" status with nothing to clear
+# it -- which, with a daily timer, can mean the rest of the day. Anything left
+# in state/*/current.json or state/*/progress/ at boot is guaranteed stale: no
+# build.sh process can have survived past this boot to still own it. Runs
+# once per boot, before the dashboard starts, so it never even gets a chance
+# to render the stale status.
+[Unit]
+Description=Clear stale pkgmirror build state left over from a killed run
+Before=pkgmirror-web.service
+
+[Service]
+Type=oneshot
+User=pkgmirror
+ExecStart=/bin/sh -c 'rm -f /srv/pkgmirror/state/*/current.json; rm -rf /srv/pkgmirror/state/*/progress'
+
+[Install]
+WantedBy=multi-user.target
