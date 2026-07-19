@@ -79,10 +79,16 @@ install -d -o "$SVC_USER" -g "$SVC_USER" \
 if ! mountpoint -q "$DATA_ROOT/work" 2>/dev/null; then
   log "Mounting tmpfs at $DATA_ROOT/work for build scratch space"
   install -d "$DATA_ROOT/work"
-  mount -t tmpfs -o size=8G,mode=0755 tmpfs "$DATA_ROOT/work"
-  chown "$SVC_USER":"$SVC_USER" "$DATA_ROOT/work"
+  # uid=/gid= baked into the mount options themselves (not just a one-time
+  # chown after mounting here) so a plain reboot -- which remounts this from
+  # /etc/fstab directly, bypassing this script entirely -- still comes back
+  # owned by the service user instead of root. Bit us 2026-07-19: a reboot
+  # left work/ root-owned, and every build failed with "Permission denied"
+  # until this script was re-run by hand.
+  svc_uid="$(id -u "$SVC_USER")" svc_gid="$(id -g "$SVC_USER")"
+  mount -t tmpfs -o "size=8G,mode=0755,uid=$svc_uid,gid=$svc_gid" tmpfs "$DATA_ROOT/work"
   grep -q "^tmpfs $DATA_ROOT/work " /etc/fstab 2>/dev/null || \
-    echo "tmpfs $DATA_ROOT/work tmpfs defaults,size=8G,mode=0755 0 0" >> /etc/fstab
+    echo "tmpfs $DATA_ROOT/work tmpfs defaults,size=8G,mode=0755,uid=$svc_uid,gid=$svc_gid 0 0" >> /etc/fstab
 fi
 
 # The web UI (running as the service user) edits package lists and PKGBUILDs.
