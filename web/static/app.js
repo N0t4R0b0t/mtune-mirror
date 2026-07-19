@@ -389,10 +389,13 @@ function archSection(a) {
         <option value="upstream">upstream</option>
         <option value="aur">aur</option>
         <option value="git">git (custom repo)</option>
+        <option value="url">url (hosted files)</option>
         <option value="local">local</option>
       </select>
       <input type="text" id="giturl-${esc(a.name)}" placeholder="git URL (https://...)" style="display:none" autocomplete="off">
       <input type="text" id="gitref-${esc(a.name)}" placeholder="ref (branch/tag, optional)" style="display:none" autocomplete="off">
+      <input type="text" id="urlbase-${esc(a.name)}" placeholder="directory URL hosting PKGBUILD (https://...)" style="display:none" autocomplete="off">
+      <input type="text" id="urlfiles-${esc(a.name)}" placeholder="extra files, comma-separated (optional)" style="display:none" autocomplete="off">
       <button onclick="addPkg('${esc(a.name)}')">Add extra package</button>
     </div>
   </section>`;
@@ -431,6 +434,8 @@ function pkgRow(arch, p) {
     <td class="mono" title="${esc(p.origin || '')}">${esc(p.origin || "")}</td>
     <td>${p.source === "git" && p.git_url
       ? `<span class="mono" title="${esc(p.git_url)}${p.git_ref ? ' @ ' + esc(p.git_ref) : ''}">git</span>`
+      : p.source === "url" && p.url_base
+      ? `<span class="mono" title="${esc(p.url_base)}${p.url_files ? ' (+ ' + esc(p.url_files) + ')' : ''}">url</span>`
       : esc(p.source)}</td>
     <td class="mono" title="${esc(p.repo_version || '')}">${esc(p.repo_version || "—")}</td>
     <td class="mono" title="${esc(src)}">${esc(src)}</td>
@@ -710,9 +715,12 @@ async function updateCheck(arch) {
   } catch (e) { $("console-out").textContent = "error: " + e.message; }
 }
 function onSrcChange(arch) {
-  const isGit = $("src-" + arch).value === "git";
+  const src = $("src-" + arch).value;
+  const isGit = src === "git", isUrl = src === "url";
   $("giturl-" + arch).style.display = isGit ? "" : "none";
   $("gitref-" + arch).style.display = isGit ? "" : "none";
+  $("urlbase-" + arch).style.display = isUrl ? "" : "none";
+  $("urlfiles-" + arch).style.display = isUrl ? "" : "none";
 }
 async function addPkg(arch) {
   const name = $("add-" + arch).value.trim();
@@ -723,6 +731,11 @@ async function addPkg(arch) {
     body.url = $("giturl-" + arch).value.trim();
     body.ref = $("gitref-" + arch).value.trim();
     if (!body.url) { toast("git source needs a URL"); return; }
+  }
+  if (source === "url") {
+    body.url = $("urlbase-" + arch).value.trim();
+    body.files = $("urlfiles-" + arch).value.trim();
+    if (!body.url) { toast("url source needs a directory URL"); return; }
   }
   try { await api("POST", `/api/packages/${arch}`, body); kick(); }
   catch (e) { toast("add failed: " + e.message); }
@@ -956,7 +969,7 @@ function helpHTML(data) {
       <li><span class="b">Builds</span> — paged history of every build sweep; expand a row to see per-package results and open a package's logs.</li>
       <li><span class="b">Settings</span> — package groups, per-arch enabled groups + chroot, and global pause/stop.</li>
       <li><span class="b">Groups</span> — reusable named package lists; enable a group on the arches that should build it. An arch's build set = its enabled groups + per-arch extras. Typing a package name (in a group or as an extra) shows a live search across core/extra/AUR with descriptions.</li>
-      <li><span class="b">Package sources</span> — <span class="b">upstream</span> (official Arch), <span class="b">aur</span>, <span class="b">git</span> (your own repo — e.g. a custom-tuned kernel; give it a URL and optional branch/tag), or <span class="b">local</span> (a PKGBUILD you edit directly here).</li>
+      <li><span class="b">Package sources</span> — <span class="b">upstream</span> (official Arch), <span class="b">aur</span>, <span class="b">git</span> (your own repo — e.g. a custom-tuned kernel; give it a URL and optional branch/tag), <span class="b">url</span> (a directory URL hosting an already-generated PKGBUILD plus optional extra files — e.g. a CI job that publishes to a static bucket), or <span class="b">local</span> (a PKGBUILD you edit directly here).</li>
       <li><span class="b">🔧 override</span> badge — this package has a build override set (pin/patches/skip-check/extra args/memory); hover for a summary, click to edit.</li>
       <li><span class="b">DUE</span> badge — a local package whose PKGBUILD version differs from the repo, or one never built.</li>
     </ul>

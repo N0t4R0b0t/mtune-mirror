@@ -94,7 +94,10 @@ al32_bump_pkgrel() {
 # Local PKGBUILD always wins (unchanged). Otherwise: source=aur clones from AUR;
 # source=git clones an arbitrary repo (config/packages/<arch>.toml url/ref — a
 # fully custom package with no Arch/AUR equivalent, e.g. your own hand-tuned
-# kernel); everything else clones Arch's GitLab packaging repo. After fetch,
+# kernel); source=url plain-HTTP-fetches a PKGBUILD (+ config's files list)
+# from a directory URL instead of cloning — for a CI pipeline that publishes
+# an already-substituted PKGBUILD to a static host rather than a git repo;
+# everything else clones Arch's GitLab packaging repo. After fetch,
 # applies (in order) a version pin, then patches, then a post_fetch hook — see
 # config/overrides/<arch>.toml (bin/lib/common.sh pkg_override) and
 # pkgbuilds/<arch>/<pkg>/{patches,hooks}/.
@@ -116,6 +119,28 @@ resolve_src() {
     [ -n "$giturl" ] || { warn "$pkg: source=git but no url configured"; return 1; }
     ( cd "$work" && git clone -q ${gitref:+-b "$gitref"} "$giturl" "$pkg" ) >/dev/null 2>&1 \
       || { warn "git clone failed for '$pkg' ($giturl${gitref:+ @ $gitref})"; return 1; }
+  elif [ "$src" = "url" ]; then
+    # Plain HTTP fetch, not a clone -- for CI pipelines that publish an
+    # already-substituted PKGBUILD (e.g. to a static bucket) rather than a
+    # clonable git repo. $dest isn't a git working tree, so it's excluded
+    # from the archlinux32 pin/checkout logic below (al32_eligible).
+    local baseurl="" filelist=""
+    IFS=$'\t' read -r baseurl filelist < <(pkg_urlspec "$arch" "$pkg") || true
+    [ -n "$baseurl" ] || { warn "$pkg: source=url but no url configured"; return 1; }
+    baseurl="${baseurl%/}"
+    install -d "$dest"
+    ( cd "$dest" && curl -fsSL -o PKGBUILD "$baseurl/PKGBUILD" ) >/dev/null 2>&1 \
+      || { warn "url fetch failed for '$pkg' PKGBUILD ($baseurl)"; return 1; }
+    if [ -n "$filelist" ]; then
+      local uf furl
+      IFS=',' read -ra _urlfiles <<< "$filelist"
+      for uf in "${_urlfiles[@]}"; do
+        [ -n "$uf" ] || continue
+        furl="$baseurl/$uf"
+        ( cd "$dest" && curl -fsSL -o "$uf" "$furl" ) >/dev/null 2>&1 \
+          || { warn "url fetch failed for '$pkg' file '$uf' ($furl)"; return 1; }
+      done
+    fi
   else
     # pkgctl only clones packages it considers "active"; a package Arch has since
     # dropped from core/extra (e.g. mesa-amber, still archlinux32-maintained for
@@ -135,7 +160,7 @@ resolve_src() {
   # for i686+upstream (unchanged); AUR/git sources have no archlinux32 version
   # relationship, so they're only pinned when explicitly requested.
   local al32_eligible=0
-  [ "$src" != "aur" ] && [ "$src" != "git" ] && is_i686 "$arch" && al32_eligible=1
+  [ "$src" != "aur" ] && [ "$src" != "git" ] && [ "$src" != "url" ] && is_i686 "$arch" && al32_eligible=1
   local tag=""
   if [ -n "$ov_pin" ]; then
     tag="$ov_pin"

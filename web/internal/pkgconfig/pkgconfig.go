@@ -41,10 +41,11 @@ type Arch struct {
 // Package mirrors one [[package]] entry in config/packages/<arch>.toml — a
 // per-arch extra (WHAT gets built beyond the arch's enabled groups).
 type Package struct {
-	Name   string `toml:"name"`
-	Source string `toml:"source"` // upstream|local|aur|git, may be empty
-	URL    string `toml:"url"`    // source=git only
-	Ref    string `toml:"ref"`    // source=git only, empty = default branch
+	Name   string   `toml:"name"`
+	Source string   `toml:"source"` // upstream|local|aur|git|url, may be empty
+	URL    string   `toml:"url"`    // source=git|url only
+	Ref    string   `toml:"ref"`    // source=git only, empty = default branch
+	Files  []string `toml:"files"`  // source=url only, extra filenames fetched alongside PKGBUILD
 }
 
 type packagesFile struct {

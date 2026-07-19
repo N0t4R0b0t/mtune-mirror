@@ -214,6 +214,9 @@ type pkgInfo struct {
 	// source=git only: the repo/ref this package is cloned from.
 	GitURL string `json:"git_url,omitempty"`
 	GitRef string `json:"git_ref,omitempty"`
+	// source=url only: the directory this package's PKGBUILD (+ files) is fetched from.
+	UrlBase  string `json:"url_base,omitempty"`
+	UrlFiles string `json:"url_files,omitempty"`
 }
 type archInfo struct {
 	Name          string          `json:"name"`
@@ -297,6 +300,7 @@ func packagesFor(arch string) []pkgInfo {
 	stats := buildStats(arch)
 	overrides := overridesFor(arch)
 	giturls := giturlsFor(arch)
+	urlspecs := urlspecsFor(arch)
 	var pkgs []pkgInfo
 	for _, e := range eff {
 		p := pkgInfo{Name: e.Name, Source: e.Source, Origin: e.Origin, RepoVer: repoVersion(arch, e.Name)}
@@ -314,6 +318,9 @@ func packagesFor(arch string) []pkgInfo {
 		p.HasOverride, p.OverrideSummary = overrideSummary(overrides[p.Name], localDir)
 		if g, ok := giturls[p.Name]; ok {
 			p.GitURL, p.GitRef = g[0], g[1]
+		}
+		if u, ok := urlspecs[p.Name]; ok {
+			p.UrlBase, p.UrlFiles = u[0], u[1]
 		}
 		pkgs = append(pkgs, p)
 	}
@@ -363,6 +370,23 @@ func giturlsFor(arch string) map[string][2]string {
 			continue
 		}
 		m[p.Name] = [2]string{p.URL, p.Ref}
+	}
+	return m
+}
+
+// urlspecsFor reads every source=url package's url/files for arch, natively —
+// mirrors giturlsFor for the url source type. Value is [2]string{url, filesCSV}.
+func urlspecsFor(arch string) map[string][2]string {
+	m := map[string][2]string{}
+	pkgs, err := pkgconfig.LoadPackages(root, arch)
+	if err != nil {
+		return m
+	}
+	for _, p := range pkgs {
+		if p.Name == "" || p.Source != "url" {
+			continue
+		}
+		m[p.Name] = [2]string{p.URL, strings.Join(p.Files, ",")}
 	}
 	return m
 }
@@ -1054,7 +1078,7 @@ func hAddPackage(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, http.StatusBadRequest, "bad arch")
 		return
 	}
-	var req struct{ Name, Tier, Source, Url, Ref string }
+	var req struct{ Name, Tier, Source, Url, Ref, Files string }
 	if json.NewDecoder(r.Body).Decode(&req) != nil || !nameRe.MatchString(req.Name) {
 		httpErr(w, http.StatusBadRequest, "bad request")
 		return
@@ -1070,6 +1094,12 @@ func hAddPackage(w http.ResponseWriter, r *http.Request) {
 		args = append(args, "--url", req.Url)
 		if req.Ref != "" {
 			args = append(args, "--ref", req.Ref)
+		}
+	}
+	if req.Source == "url" {
+		args = append(args, "--url", req.Url)
+		if req.Files != "" {
+			args = append(args, "--files", req.Files)
 		}
 	}
 	if out, err := run("bash", args...); err != nil {
