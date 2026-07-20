@@ -27,6 +27,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"pkgmirror/web/internal/pkgconfig"
@@ -777,6 +778,11 @@ func hLogStream(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "sudo", "journalctl", "-o", "cat", "-n", "500", "-f", "-u", unit)
+	// sudo can't relay SIGKILL (the default on ctx cancellation) to the
+	// journalctl child it spawns, so a killed sudo just orphans a `-f` that
+	// never stops. sudo *does* relay SIGTERM, which journalctl exits on.
+	cmd.Cancel = func() error { return cmd.Process.Signal(syscall.SIGTERM) }
+	cmd.WaitDelay = 3 * time.Second
 	stdout, err := cmd.StdoutPipe()
 	if err != nil || cmd.Start() != nil {
 		httpErr(w, http.StatusInternalServerError, "journalctl failed")
