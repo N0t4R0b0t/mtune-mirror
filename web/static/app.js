@@ -636,7 +636,8 @@ function renderSettings(data) {
       <div class="group">
         <button class="${data.paused ? "primary" : ""}" onclick="togglePause()">${data.paused ? "Resume builds" : "Pause builds"}</button>
         <button class="danger" onclick="stopBuilds()">Stop running builds</button>
-        <p class="muted" style="margin:8px 0 0">Pause halts all builds (and stops any in progress) until resumed; it persists across reboots. Stop kills running builds without pausing.</p>
+        <button onclick="flushCache()">Flush pacman cache</button>
+        <p class="muted" style="margin:8px 0 0">Pause halts all builds (and stops any in progress) until resumed; it persists across reboots. Stop kills running builds without pausing. Flush pacman cache clears the package cache shared across every arch's chroot and re-syncs their package databases -- fixes builds failing with "corrupted package" or "signature is invalid" errors.</p>
       </div>
     </section>`;
 }
@@ -706,6 +707,11 @@ async function bootstrap(arch) {
   if (!confirm(`Re-bootstrap the ${arch} chroot? This rebuilds it from scratch.`)) return;
   try { const r = await api("POST", `/api/chroot/${arch}/bootstrap`); openConsole(`bootstrap ${arch}`, r.unit); kick(); }
   catch (e) { toast("bootstrap failed: " + e.message); }
+}
+async function flushCache() {
+  if (!confirm("Flush the shared pacman cache and re-sync every chroot's package database?")) return;
+  try { const r = await api("POST", "/api/cache/flush"); openConsole("flush pacman cache", r.unit); kick(); }
+  catch (e) { toast("cache flush failed: " + e.message); }
 }
 async function updateCheck(arch) {
   openConsole(`update-check ${arch}`, null);

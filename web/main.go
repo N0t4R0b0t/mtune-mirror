@@ -83,6 +83,7 @@ func main() {
 	mux.HandleFunc("PUT /api/override/{arch}/{pkg}", hPutOverride)
 	mux.HandleFunc("GET /api/pkgsearch", hPkgSearch)
 	mux.HandleFunc("POST /api/chroot/{arch}/bootstrap", hBootstrap)
+	mux.HandleFunc("POST /api/cache/flush", hFlushCache)
 	mux.HandleFunc("POST /api/update-check/{arch}", hUpdateCheck)
 	mux.HandleFunc("POST /api/groups", hCreateGroup)
 	mux.HandleFunc("POST /api/groups/{group}/packages/{pkg}", hGroupAdd)
@@ -1339,6 +1340,24 @@ func hBootstrap(w http.ResponseWriter, r *http.Request) {
 	out, err := run("sudo", "systemd-run", "--unit="+unit,
 		"--setenv=REPO_ROOT="+root, "--property=WorkingDirectory="+root,
 		"bash", filepath.Join(root, "installer/bootstrap-chroot.sh"), a)
+	if err != nil {
+		httpErr(w, http.StatusInternalServerError, "systemd-run failed: "+out)
+		return
+	}
+	writeJSON(w, map[string]string{"unit": unit})
+}
+
+// hFlushCache clears the pacman package cache shared across every arch's
+// chroot and force-refreshes each bootstrapped chroot's sync DB (bin/flush-
+// cache.sh with no arg) -- the fix for the "corrupted package (checksum)" /
+// "signature is invalid" dependency-install failures a stale shared cache or
+// sync DB produces. Run as an ad-hoc unit like hBootstrap since it touches
+// every arch's chroot and can take a while.
+func hFlushCache(w http.ResponseWriter, r *http.Request) {
+	unit := fmt.Sprintf("pkgmirror-adhoc-%d", time.Now().UnixNano())
+	out, err := run("sudo", "systemd-run", "--unit="+unit,
+		"--setenv=REPO_ROOT="+root, "--property=WorkingDirectory="+root,
+		"bash", filepath.Join(root, "bin/flush-cache.sh"))
 	if err != nil {
 		httpErr(w, http.StatusInternalServerError, "systemd-run failed: "+out)
 		return
