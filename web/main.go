@@ -1348,11 +1348,12 @@ func hBootstrap(w http.ResponseWriter, r *http.Request) {
 }
 
 // hFlushCache clears the pacman package cache shared across every arch's
-// chroot and force-refreshes each bootstrapped chroot's sync DB (bin/flush-
-// cache.sh with no arg) -- the fix for the "corrupted package (checksum)" /
-// "signature is invalid" dependency-install failures a stale shared cache or
-// sync DB produces. Run as an ad-hoc unit like hBootstrap since it touches
-// every arch's chroot and can take a while.
+// chroot and force-refreshes every bootstrapped chroot's sync DB
+// (bin/flush-cache.sh, always fleet-wide -- see that script for why a
+// single-arch refresh is unsafe, not just incomplete). Fixes the "corrupted
+// package (checksum)" / "signature is invalid" dependency-install failures a
+// stale or cross-arch-polluted shared cache produces. Run as an ad-hoc unit
+// like hBootstrap since it touches every arch's chroot and can take a while.
 func hFlushCache(w http.ResponseWriter, r *http.Request) {
 	unit := fmt.Sprintf("pkgmirror-adhoc-%d", time.Now().UnixNano())
 	out, err := run("sudo", "systemd-run", "--unit="+unit,
