@@ -312,8 +312,19 @@ All scripts live in `bin/` (run inside the container; the build ones as the
 | `add-arch.sh <name> --base .. --cflags ".."`        | scaffold a new arch                     |
 | `control.sh pause\|resume\|stop\|status`            | pause/resume/stop the build system      |
 | `repo-sync.sh <arch> <pkgfile ...>`                 | add built packages to the served repo   |
+| `audit-al32-deps.sh [arch] [repo,repo,...]`         | audit archlinux32's OWN repo (default `i686 core,extra`) for dependency-drift: packages whose declared `depends`/`makedepends`/`checkdepends` aren't satisfiable by anything currently published |
 
 In-container conveniences: `pkgmirror-update` (self-update).
+
+`audit-al32-deps.sh` is the odd one out in this table — it doesn't touch this
+project's own packages at all, and doesn't need to run as the `pkgmirror`
+user or even inside the container (just needs `bsdtar`, `vercmp`, `curl`,
+`awk`, all standard on any Arch-family machine). It exists because we've
+independently hit archlinux32's own package-graph drift more than once (a
+package still declaring a dependency version its sibling packages have since
+moved past, or moved beyond) — each time surfacing only as an obscure
+build-time failure, never a clean error. Findings worth reporting upstream go
+into [`docs/archlinux32-upstream-reports.md`](archlinux32-upstream-reports.md).
 
 ## Security
 

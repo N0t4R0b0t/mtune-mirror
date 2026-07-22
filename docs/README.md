@@ -11,3 +11,6 @@ For a quick start, see the [top-level README](../README.md).
 - **[User guide](user-guide.md)** — installing, client setup, the web UI, the CLI,
   adding an architecture, patching packages, managing groups, pausing, and
   troubleshooting.
+- **[archlinux32 upstream reports](archlinux32-upstream-reports.md)** — dependency-drift
+  issues found in archlinux32's own repo, with root causes, concrete fixes, and
+  report status.

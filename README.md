@@ -89,6 +89,9 @@ Full docs live in [`docs/`](docs/):
   adding an arch, patching packages, groups, pausing, and troubleshooting.
 - **[Releasing](docs/releasing.md)** — maintainer notes: CI, cutting a tagged
   release, and pushing changes to a live container.
+- **[archlinux32 upstream reports](docs/archlinux32-upstream-reports.md)** — dependency-drift
+  issues found in archlinux32's own repo (via `bin/audit-al32-deps.sh`), with root causes,
+  concrete fixes, and report status.
 
 Want to contribute? See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
