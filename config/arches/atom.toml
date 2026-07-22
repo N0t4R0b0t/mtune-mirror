@@ -34,3 +34,10 @@ groups    = ["essentials", "essentials-atom"]
 # $arch and $repo are expanded by pacman when it reads the generated mirrorlist.
 mirror  = "https://mirror.archlinux32.org/$arch/$repo"
 keyring = "archlinux32-keyring"
+# basilisk (UXP, a full browser engine source tree + objdir) hit "No space
+# left on device" at the default 10G during prepare() alone, before any
+# compilation (2026-07-22). Bumped well past btver1's 13G since a browser
+# build's intermediate objects dwarf a kernel/mesa build's; container RAM
+# is 32G with plenty of headroom (confirmed free at bump time), so this
+# isn't trading ENOSPC for OOM the way a tighter host would.
+build_tmpfs_gb = 20
