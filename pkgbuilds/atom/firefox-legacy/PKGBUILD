@@ -1,0 +1,51 @@
+# Maintainer: local (pkgmirror atom package set)
+#
+# Repackages Mozilla's official prebuilt Firefox 140 ESR linux-i686 binary.
+# Firefox dropped i686 Linux builds from the regular release channel at v145,
+# but kept shipping them on the 140 ESR line (confirmed via
+# ftp.mozilla.org/pub/firefox/releases/ -- 144.0.2 still has linux-i686,
+# 145.0 doesn't; 140.Nesr keeps getting point releases with linux-i686
+# alongside it). This is a real, currently-serviced Mozilla build, not an
+# ancient abandoned one -- but it IS frozen at whatever point release is
+# pinned below; it will not auto-update past ESR 140's own eventual EOL.
+# No -march=atom tuning applies -- this is Mozilla's own prebuilt binary,
+# nothing here gets locally compiled.
+pkgname=firefox-legacy
+pkgver=140.13.0esr
+pkgrel=1
+pkgdesc="Firefox 140 ESR prebuilt binary -- last Mozilla-shipped linux-i686 build still receiving point releases"
+arch=('i686')
+url="https://www.mozilla.org/firefox/"
+license=('MPL-2.0' 'GPL-2.0-only' 'LGPL-2.1-only')
+depends=('gtk3' 'libxt' 'dbus-glib' 'ffmpeg' 'libpulse' 'ttf-font')
+options=('!strip')
+source=("https://ftp.mozilla.org/pub/firefox/releases/${pkgver}/linux-i686/en-US/firefox-${pkgver}.tar.xz")
+sha256sums=('e449fb382b9e3c578b39f1d1f7720ad02463ef71167f2c9c563f5039cdd8c754')
+
+package() {
+  install -dm755 "$pkgdir/opt/firefox-legacy"
+  cp -a "$srcdir/firefox/." "$pkgdir/opt/firefox-legacy/"
+
+  install -dm755 "$pkgdir/usr/bin"
+  ln -s /opt/firefox-legacy/firefox "$pkgdir/usr/bin/firefox-legacy"
+
+  install -dm755 "$pkgdir/usr/share/pixmaps"
+  for sz in 16 32 48 64 128; do
+    icon="$srcdir/firefox/browser/chrome/icons/default/default${sz}.png"
+    [ -f "$icon" ] && install -Dm644 "$icon" \
+      "$pkgdir/usr/share/icons/hicolor/${sz}x${sz}/apps/firefox-legacy.png"
+  done
+
+  install -dm755 "$pkgdir/usr/share/applications"
+  cat > "$pkgdir/usr/share/applications/firefox-legacy.desktop" <<EOF
+[Desktop Entry]
+Name=Firefox Legacy (140 ESR)
+Comment=Mozilla's last official i686 Firefox build (frozen, not auto-updated)
+Exec=/usr/bin/firefox-legacy %u
+Terminal=false
+Type=Application
+Icon=firefox-legacy
+Categories=Network;WebBrowser;
+MimeType=text/html;text/xml;application/xhtml+xml;x-scheme-handler/http;x-scheme-handler/https;
+EOF
+}

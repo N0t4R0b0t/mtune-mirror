@@ -23,3 +23,26 @@
   name = 'ca-certificates-cacert'
   source = 'aur'
 
+[[package]]
+  name = 'moonlight-qt'
+  source = 'upstream'
+
+[[package]]
+  name = 'firefox-legacy'
+  source = 'local'
+
+[[package]]
+  name = 'libcss'
+  source = 'upstream'
+
+[[package]]
+  name = 'libutf8proc'
+  source = 'upstream'
+
+[[package]]
+  name = 'libnsgif'
+  source = 'upstream'
+
+[[package]]
+  name = 'netsurf'
+  source = 'upstream'

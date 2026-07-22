@@ -68,3 +68,23 @@
 [[override]]
   name = 'gdk-pixbuf2'
   notes = 'archlinux32 never split glib2/glib2-devel, but our OWN glib2 build (see glib2 override) does -- this package genuinely needs glib2-devel (glib-compile-resources, for tests/resources.h/c) once consuming our split build. Dropped no-glib2-devel.patch 2026-07-15: it was correct against archlinux32 unsplit glib2, actively wrong (breaks the .gir/resources build step) against ours. Dropped fix-atom-march-sigill.patch 2026-07-16: root cause was actually libgio (glib2) using MOVBE (a real Atom instruction the build host CPU lacks) -- fixed at the arch level via -mno-movbe in atom.toml cflags instead of per-package CFLAGS overrides.'
+
+[[override]]
+  name = 'netsurf'
+  notes = 'netsurf 3.11 needs libcss>=0.9.2, libnsgif>=1.0.0, libutf8proc>=2.9.0 that archlinux32 does not ship yet -- built all three ourselves locally (pinned to mainline current tags) rather than patching netsurf against older APIs. libhubbub=0.3.8/libnsutils=0.1.1/libdom>=0.4.2/libsvgtiny>=0.1.8/libwapcaplet>=0.4.3/libjxl archlinux32 already has natively, no local build needed for those.'
+  pin = '3.11-10'
+
+[[override]]
+  name = 'libcss'
+  notes = 'archlinux32 has 0.9.1, netsurf 3.11 needs >=0.9.2. Pinned to mainline current tag to build our own newer version locally for the netsurf 3.11 attempt.'
+  pin = '0.9.2-2'
+
+[[override]]
+  name = 'libutf8proc'
+  notes = 'archlinux32 has 2.8.0, netsurf 3.11 needs >=2.9.0. Pinned to mainline current tag.'
+  pin = '2.11.3-1'
+
+[[override]]
+  name = 'libnsgif'
+  notes = 'archlinux32 has 0.2.1, netsurf 3.11 needs >=1.0.0 (a real API-breaking major bump). Pinned to mainline current tag.'
+  pin = '1.0.0-2'
