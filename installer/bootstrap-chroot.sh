@@ -203,6 +203,23 @@ Server = ${mirror}
 EOF
     setarch i686 mkarchroot -C "$local_conf" "$chroot_root" base-devel
     rm -f "$local_conf"
+
+    # archlinux32 splits old SONAMEs a package still needs (e.g. a lagged
+    # qt6-base built against libicui18n.so.75, or librsvg against
+    # libxml2.so.2) into separate compat packages (icu75, libxml2-legacy,
+    # ...) that pacman's normal dependency resolution does NOT auto-pull in
+    # -- confirmed 2026-07-22: neither appears in `pacman -Sup <target>`'s
+    # resolved transaction even though they're valid, available providers of
+    # the exact soname required. Install them explicitly into the base chroot
+    # now so every build (which syncs its working copy FROM this base) has
+    # them; otherwise builds needing a lagged package's true dependency fail
+    # with "cannot open shared object file" deep into prepare()/postinst
+    # hooks, not a clean dependency-resolution error. Re-run whenever this
+    # bites a newly-lagged package's own old SONAME shim.
+    setarch i686 pacman -Syu --noconfirm \
+      --config "$chroot_root/etc/pacman.conf" \
+      --root "$chroot_root" --dbpath "$chroot_root/var/lib/pacman" \
+      icu75 libxml2-legacy
     ;;
 
   *)
