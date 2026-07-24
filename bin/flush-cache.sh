@@ -1,40 +1,45 @@
 #!/usr/bin/env bash
 # bin/flush-cache.sh
 #
-# Clears the shared pacman package cache and force-refreshes EVERY
-# bootstrapped arch's sync DB. No per-arch mode: reproduced live
-# (2026-07-20) that refreshing only one arch is actively unsafe, not just
-# incomplete. A same-name/same-version package can be signed differently
-# per arch (e.g. vanilla Arch's `mesa`/`libdrm`/`libpng` vs Manjaro's own
-# rebuild of the identical version string) -- if one arch's build
-# repopulates the shared cache with ITS trust domain's copy, the next
-# build on a DIFFERENT arch that needs the same filename fails with
-# "signature is invalid" / "corrupted package", because pacman is
-# validating that cached file against the wrong arch's keyring. This is
-# exactly what happened when a btver1 mesa rebuild (using this script's
-# earlier single-arch mode) left Arch-signed libpng/libdrm/mesa in the
-# shared cache, and a manjaro sunshine build picked them up next and
-# failed dependency install against Manjaro's keyring. Since the cache is
-# shared and any arch's build can dirty it for every other arch, the only
-# safe operation is "refresh everyone, every time."
+# Manual escape hatch: clears every bootstrapped arch's pacman package cache
+# and force-refreshes its sync DB. Each arch now has its own CacheDir
+# (installer/bootstrap-chroot.sh sets /var/cache/pacman/pkg-<arch>/ per
+# chroot, since arch-nspawn reads CacheDir straight out of that chroot's own
+# pacman.conf), so the cross-arch trust collision this script was originally
+# written to clean up after -- a same-name/same-version package signed
+# differently per arch (e.g. vanilla Arch's `mesa`/`libdrm`/`libpng` vs
+# Manjaro's own rebuild of the identical version string) landing in one
+# shared cache file and failing "signature is invalid"/"corrupted package"
+# on whichever arch built second -- is now structurally impossible, not just
+# handled after the fact. This script still loops over every arch (not a
+# per-arch flag) purely for consistency/simplicity now that it's just
+# routine cache hygiene, not a safety-critical fleet-wide operation.
 #
 # Cache files are deleted directly rather than via `pacman -Scc`: that
 # command's own "remove ALL files from cache?" prompt defaults to N, and
 # --noconfirm answers prompts with their default rather than forcing yes --
 # so `pacman -Scc --noconfirm` silently leaves every file in place
 # (confirmed empirically; the cache stayed at 621M/484 files across a full
-# -Scc run). A cache clear alone also doesn't reliably fix this if a
-# chroot's own sync DB is stale/mismatched (see bin/build.sh's
-# sync_chroot_db) -- both need refreshing together, which is what this does.
+# -Scc run). A cache clear alone also doesn't reliably fix a stale sync DB
+# (see bin/build.sh's sync_chroot_db) -- both need refreshing together,
+# which is what this does.
 set -euo pipefail
 source "$(dirname "$(readlink -f "$0")")/lib/common.sh"
 
-cache_dir="$(pacman-conf CacheDir 2>/dev/null | head -1)"
-cache_dir="${cache_dir:-/var/cache/pacman/pkg/}"
-
-log "flushing shared pacman cache: $cache_dir"
-sudo find "$cache_dir" -mindepth 1 -delete 2>&1 \
-  || warn "cache flush reported errors (continuing)"
+flush_one() {
+  local arch="$1"
+  local chroot_base="$PKGMIRROR_DATA/chroots/$arch"
+  if [ ! -f "$chroot_base/root/.pkgmirror-ready" ]; then
+    warn "skip $arch: chroot not bootstrapped"
+    return 0
+  fi
+  local cache_dir
+  cache_dir="$(pacman-conf --config "$chroot_base/root/etc/pacman.conf" CacheDir 2>/dev/null | head -1)"
+  cache_dir="${cache_dir:-/var/cache/pacman/pkg/}"
+  log "flushing pacman cache for '$arch': $cache_dir"
+  sudo find "$cache_dir" -mindepth 1 -delete 2>&1 \
+    || warn "cache flush reported errors for '$arch' (continuing)"
+}
 
 refresh_db() {
   local arch="$1" wrap=""
@@ -43,6 +48,7 @@ refresh_db() {
     warn "skip $arch: chroot not bootstrapped"
     return 0
   fi
+  flush_one "$arch"
   is_i686 "$arch" && wrap="setarch i686"
   log "refreshing sync DB for $arch"
   $wrap sudo pacman -Syy --noconfirm \

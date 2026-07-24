@@ -260,6 +260,29 @@ if [ -f "$pc" ] && ! grep -q '^DisableSandbox' "$pc"; then
   log "disabled pacman sandbox in $arch chroot"
 fi
 
+# Give this arch its own pacman package cache instead of sharing the host
+# default (/var/cache/pacman/pkg/) with every other arch. arch-nspawn (called
+# by makechrootpkg) reads CacheDir straight out of THIS pacman.conf and bind-
+# mounts whatever it finds -- so a shared CacheDir means a same-name/same-
+# version package built for two arches (e.g. vanilla Arch's mesa vs Manjaro's
+# own re-signed rebuild of the identical version string) can collide in one
+# cache file, and pacman then fails installing it with a "signature is
+# invalid"/"corrupted package" error that looks like real corruption but is
+# actually a cross-arch trust collision. Per-arch CacheDir makes that
+# structurally impossible instead of relying on periodically running
+# bin/flush-cache.sh after the fact.
+pc="$chroot_root/etc/pacman.conf"
+host_cache_dir="/var/cache/pacman/pkg-${arch}/"
+mkdir -p "$host_cache_dir"
+if [ -f "$pc" ]; then
+  if grep -q '^#\?CacheDir' "$pc"; then
+    sed -i "s|^#\?CacheDir.*|CacheDir = $host_cache_dir|" "$pc"
+  else
+    sed -i "/^\[options\]/a CacheDir = $host_cache_dir" "$pc"
+  fi
+  log "set per-arch pacman cache for '$arch': $host_cache_dir"
+fi
+
 # Tune the chroot's makepkg.conf for this arch (done as root here; builds run as
 # the unprivileged pkgmirror user and can't edit the root-owned chroot). -c copies
 # root/ per build, so these flags propagate to every makechrootpkg invocation.
