@@ -30,3 +30,8 @@
 [[package]]
   name = 'portaudio'
   source = 'upstream'
+
+[[package]]
+  name = 'gwnbd'
+  source = 'git'
+  url = 'https://github.com/N0t4R0b0t/gwnbd.git'
