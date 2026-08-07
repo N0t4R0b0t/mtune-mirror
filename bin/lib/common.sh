@@ -411,7 +411,10 @@ remote_head_sha() {
   local url="$1" ref="${2:-HEAD}" timeout_s
   [ -n "$url" ] || return 0
   timeout_s="$(config_get update_check_timeout_sec)"; timeout_s="${timeout_s:-15}"
-  timeout "$timeout_s" git ls-remote "$url" "$ref" 2>/dev/null | awk 'NR==1{print $1}'
+  # `|| true`: under callers' `set -euo pipefail`, a failed git ls-remote
+  # (network blip, remote down) would otherwise abort the whole update-check
+  # sweep instead of falling back to "unreachable" for just this package.
+  timeout "$timeout_s" git ls-remote "$url" "$ref" 2>/dev/null | awk 'NR==1{print $1}' || true
 }
 
 # url_remote_version <arch> <pkg> -> "[epoch:]pkgver-pkgrel" fetched fresh from
