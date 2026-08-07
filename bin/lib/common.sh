@@ -456,17 +456,23 @@ pkgbuild_version() {
 # repo_version <arch> <pkg> -> version of the newest built package in the repo,
 # or empty if absent. Best-effort parse of the package filename.
 #
-# The glob requires a digit right after "<pkg>-": pacman package filenames are
-# <pkgname>-<pkgver>-<pkgrel>-<arch>.pkg.tar.zst, and pkgver conventionally
-# starts with a digit. Without this, "freetype2-*" also matches sibling
-# split-package files that merely start with the same substring --
-# freetype2-docs-*, freetype2-demos-*, freetype2-debug-* -- so e.g. freetype2
-# would report freetype2-docs's version instead of its own, breaking the
-# up-to-date skip check in build_pkg for any split package.
+# The glob requires a digit (or VCS-style "r<N>...") right after "<pkg>-":
+# pacman package filenames are <pkgname>-<pkgver>-<pkgrel>-<arch>.pkg.tar.zst,
+# and pkgver conventionally starts with a digit. Without this restriction,
+# "freetype2-*" also matches sibling split-package files that merely start
+# with the same substring -- freetype2-docs-*, freetype2-demos-*,
+# freetype2-debug-* -- so e.g. freetype2 would report freetype2-docs's
+# version instead of its own, breaking the up-to-date skip check in
+# build_pkg for any split package. The second pattern additionally covers
+# -git packages' pkgver() output (e.g. "r18.1fec16d"), which by Arch VCS
+# packaging convention always starts with a literal "r" immediately followed
+# by a digit -- specific enough not to reopen the split-package ambiguity
+# above (a split-package suffix like "-docs"/"-debug" doesn't collide with
+# "-r<digit>").
 repo_version() {
   local repo_dir="$PKGMIRROR_DATA/repos/$1" pkg="$2" f v
   local newest=""
-  for f in "$repo_dir/$pkg"-[0-9]*.pkg.tar.zst; do
+  for f in "$repo_dir/$pkg"-[0-9]*.pkg.tar.zst "$repo_dir/$pkg"-r[0-9]*.pkg.tar.zst; do
     [ -e "$f" ] || continue
     # strip "<dir>/<pkg>-" prefix and "-<arch>.pkg.tar.zst" suffix -> pkgver-pkgrel
     v="$(basename "$f")"; v="${v#"$pkg"-}"; v="${v%-*.pkg.tar.zst}"
