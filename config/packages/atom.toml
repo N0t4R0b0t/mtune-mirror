@@ -8,6 +8,12 @@
   url = 'https://github.com/N0t4R0b0t/linux-atom.git'
 
 [[package]]
+  name = 'linux-atom7'
+  source = 'git'
+  url = 'https://github.com/N0t4R0b0t/linux-atom.git'
+  ref = '7.x'
+
+[[package]]
   name = 'moonlight-embedded'
   source = 'aur'
 

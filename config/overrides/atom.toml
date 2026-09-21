@@ -30,6 +30,11 @@
   notes = 'kernel C TUs run leaner than the 1536MB fleet default; unlocks full nproc'
 
 [[override]]
+  mem_per_job_mb = 900
+  name = 'linux-atom7'
+  notes = 'same as linux-atom: 7.x branch of the same kernel repo, same lean C TUs'
+
+[[override]]
   name = 'moonlight-embedded'
   notes = 'archlinux32 librsvg (2.58.3-1.0) still NEEDs libxml2.so.2, but current libxml2 (2.15.1-4.0) only ships libxml2.so.16 (upstream soname bump, librsvg never rebuilt against it) -- breaks the link via ffmpegs optional svg demuxer. moonlight-embedded never touches SVG at runtime, so --allow-shlib-undefined is safe: skips validating librsvgs own broken transitive deps at link time'
   patches = ['allow-shlib-undefined.patch']
