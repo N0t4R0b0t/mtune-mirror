@@ -357,15 +357,19 @@ clear_current() { rm -f "$1/current.json"; rm -rf "$1/progress"; }
 # Refresh the chroot root's package databases from the arch's own mirrors (via the
 # chroot's pacman.conf, NOT the container's). i686 arches need this so al32_pin_tag
 # reads current archlinux32 versions; harmless to keep fresh for x86_64 too. Runs
-# once per sweep, before any build copies the root. Best-effort: a stale DB only
-# means a slightly out-of-date pin, so failure here doesn't abort the sweep.
+# once per sweep, before any build copies the root. Also upgrades the root (-Syu,
+# not just -Sy): syncing alone leaves it behind the DB, so makechrootpkg's
+# missing-dep install becomes a partial upgrade and dies on e.g. "installing
+# libelf 0.196 breaks dependency libelf=0.195 required by elfutils". Best-effort:
+# a stale DB only means a slightly out-of-date pin, so failure here doesn't abort
+# the sweep.
 sync_chroot_db() {
   local wrap=""; is_i686 "$arch" && wrap="setarch i686"
-  $wrap sudo pacman -Sy --noconfirm \
+  $wrap sudo pacman -Syu --noconfirm \
     --config "$chroot_base/root/etc/pacman.conf" \
     --root "$chroot_base/root" \
     --dbpath "$chroot_base/root/var/lib/pacman" >/dev/null 2>&1 \
-    || warn "chroot DB sync failed for '$arch' (pins may be stale)"
+    || warn "chroot DB sync/upgrade failed for '$arch' (pins may be stale)"
 }
 
 run_build() {
