@@ -32,3 +32,8 @@
   name = 'portaudio'
   notes = 'jack is only a build-time auto-detected dependency here (pkg-config, no --disable-jack flag exists), not a hard runtime need -- machine owner does not use JACK audio and jack itself was heavy/conflict-prone to maintain (see ffmpeg override). Drops jack from makedepends and the package()-injected runtime depends so JACK support never gets autodetected/linked.'
   patches = ['drop-jack.patch']
+
+[[override]]
+  name = 'zlib'
+  notes = 'PKGBUILD pins a sha512 for the minizip ints.h patch as a bare github.com/.../commit/<sha>.patch URL (no ?full_index=1, unlike the CVE patch two lines below). That endpoint is not byte-stable over time -- re-fetching it today matches neither the pinned sha512 nor the one recorded when this was last checked, even though the diff content (verified by dry-run against pristine zlib-1.3.2) is unchanged. Vendors that exact patch content as a local source file instead of trusting the mutable URL, so this stops drifting regardless of what GitHub does next. atom builds zlib archlinux32-pinned to an older pkgrel that predates this patch entirely, so it is unaffected.'
+  patches = ['vendor-minizip-ints-patch.patch']
