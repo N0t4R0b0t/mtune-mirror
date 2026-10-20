@@ -23,3 +23,9 @@ groups    = ["essentials-manjaro"]
 # https://repo.manjaro.org if this one is slow.
 mirror  = "https://mirrors2.manjaro.org/stable/$repo/$arch"
 keyring = "manjaro-keyring"
+# sunshine (forced-in cuda makedepend, see pkgbuilds/manjaro/sunshine/hooks/
+# post_fetch.sh) hit "No space left on device" at the default 10G: cuda alone
+# installs ~5GB, and boost's FetchContent download+extract on top of that blew
+# past the cap before any compilation (2026-10-20). Bumped to match atom's
+# browser-scale precedent; container RAM is 32G with plenty of headroom.
+build_tmpfs_gb = 20

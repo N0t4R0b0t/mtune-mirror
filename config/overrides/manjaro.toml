@@ -1,0 +1,3 @@
+[[override]]
+  name = 'sunshine'
+  notes = 'CUDA/NVENC is auto-detected via `pacman -Qi cuda`, not a real makedepend -- forced in via hooks/post_fetch.sh (sed, not a patch, since this AUR PKGBUILD regenerates its pkgver/_commit every release) so the build gets the NVENC-optimized path instead of silently falling back.'
